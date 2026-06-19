@@ -18,7 +18,7 @@
       <a href="dashboard.php"><i class="fa fa-home"></i> Dashboard</a>
     </li>
     <li class="<?php echo $currentPage === 'subdash.php' ? 'active' : ''; ?>">
-      <a href="#"><i class="fa fa-th-large"></i> Sub-Dashboard</a>
+      <a href="subdash.php"><i class="fa fa-th-large"></i> Sub-Dashboard</a>
     </li>
     <li class="<?php echo $currentPage === 'report.php' ? 'active' : ''; ?>">
       <a href="report.php"><i class="fa fa-file-text-o"></i> Main Report</a>
