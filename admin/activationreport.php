@@ -7,7 +7,8 @@ $pageIcon  = 'fa-bolt';
 include("includes/check_session.php");
 date_default_timezone_set("Asia/Kolkata");
 
-$con1 = mysqli_connect('10.34.240.214','webserveruser','K&dN&r4a8N@du0') or die(mysql_error());//cluster 2
+require_once __DIR__ . '/includes/config.php';
+$con1 = $con; // credentials loaded from .env via config.php
 
 $start_date = '';
 $end_date   = '';
