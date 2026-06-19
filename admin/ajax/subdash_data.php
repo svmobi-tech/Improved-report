@@ -82,9 +82,9 @@ $sql = "
           AND operator NOT IN ({$excl_sql})
         GROUP BY product, country, operator
     ) a
-    LEFT JOIN  `{$report}`.operatorcost        b ON b.operator = a.operator
-    LEFT JOIN  `{$report}`.svmobi_revenueshare c ON c.operator = a.operator
-    INNER JOIN `{$report}`.currency            f ON f.country  = a.country
+    LEFT JOIN  (SELECT operator, MAX(operator_cost) AS operator_cost FROM `{$report}`.operatorcost        GROUP BY operator) b ON b.operator = a.operator
+    LEFT JOIN  (SELECT operator, MAX(revenueshare)  AS revenueshare  FROM `{$report}`.svmobi_revenueshare GROUP BY operator) c ON c.operator = a.operator
+    INNER JOIN (SELECT country,  MAX(toinr)         AS toinr          FROM `{$report}`.currency            GROUP BY country)  f ON f.country  = a.country
     LEFT JOIN (
         SELECT product, operator, SUM(ptotalamount) AS ptotalamount
         FROM `{$report}`.subdashboard
