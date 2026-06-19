@@ -74,7 +74,7 @@ $pageIcon  = 'fa-file-text-o';
 
                 <div class="col-md-2 col-sm-4 col-xs-12">
                     <div class="form-group">
-                        <label class="hp-filter-label">&nbsp;</label><br>
+                        <label class="hp-filter-label">&nbsp;</label>
                         <button type="submit" id="btnSubmit" class="btn-submit-report">
                             <i class="fa fa-search"></i> Submit
                         </button>
