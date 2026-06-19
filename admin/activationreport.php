@@ -21,6 +21,9 @@ $hours       = mysqli_real_escape_string($con1, $_POST['hours']      ?? '');
 
 $report = 'gamebardb_vodafone_qatar_report';
 
+$kk = [];
+$ll = [];
+
 $result1 = $con1->query("select Product,count(Country)cc from {$report}.activationsetting where Action='Open' group by Product");
 while ($row1 = mysqli_fetch_array($result1)) {
     $kk[$row1['Product']] = $row1['cc'];
@@ -190,13 +193,14 @@ if (isset($_POST['submit'])):
                             <div style="padding:16px; overflow-x:auto;">
                                 <table class="table table-bordered" id="myTable">
                                     <thead>
-                                        <th><center>Date</center></th>
-                                        <th colspan="<?php echo $kk['Gamebar']  ?? 0; ?>"><center>Gamebar</center></th>
-                                        <th colspan="<?php echo $kk['Glambar']  ?? 0; ?>"><center>Glambar</center></th>
-                                        <th colspan="<?php echo $kk['11Players'] ?? 0; ?>"><center>11Players</center></th>
-                                        <th colspan="<?php echo $kk['Contest']  ?? 0; ?>"><center>Contest</center></th>
                                         <tr>
-                                            <th></th>
+                                            <th rowspan="2"><center>Date</center></th>
+                                            <?php if (($kk['Gamebar']  ?? 0) > 0): ?><th colspan="<?php echo $kk['Gamebar'];  ?>"><center>Gamebar</center></th><?php endif; ?>
+                                            <?php if (($kk['Glambar']  ?? 0) > 0): ?><th colspan="<?php echo $kk['Glambar'];  ?>"><center>Glambar</center></th><?php endif; ?>
+                                            <?php if (($kk['11Players'] ?? 0) > 0): ?><th colspan="<?php echo $kk['11Players']; ?>"><center>11Players</center></th><?php endif; ?>
+                                            <?php if (($kk['Contest']  ?? 0) > 0): ?><th colspan="<?php echo $kk['Contest'];  ?>"><center>Contest</center></th><?php endif; ?>
+                                        </tr>
+                                        <tr>
                                             <?php foreach ($columns as $product => $countries): ?>
                                                 <?php foreach ($countries as $country => $col): ?>
                                                     <?php if (($ll[$product][$country] ?? '') === 'Open'): ?>
