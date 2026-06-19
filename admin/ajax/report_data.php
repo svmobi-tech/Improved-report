@@ -129,7 +129,7 @@ if ($start_dt1 === $today && $end_dt1 === $today) {
     }
 } else {
     $q_hist = "SELECT * FROM `{$report}`.mainreport
-               WHERE date >= '{$start_dt1}' AND date < '{$end_dt1}'
+               WHERE date >= '{$start_dt1}' AND date <= '{$end_dt1}'
                AND advertiser='{$adve}' AND operator='{$operator}' AND product='{$product}'";
     $r_hist = mysqli_query($con, $q_hist);
     if ($r_hist) {
