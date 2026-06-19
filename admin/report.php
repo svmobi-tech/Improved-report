@@ -97,6 +97,13 @@ $pageIcon  = 'fa-file-text-o';
 <script>
 $(document).ready(function () {
 
+    // ── Date pickers ──────────────────────────────────────────────────────────
+    $('#start_date, #end_date').daterangepicker({
+        singleDatePicker : true,
+        autoApply        : true,
+        locale           : { format: 'DD-MM-YYYY' }
+    });
+
     // ── Product change → load operators via AJAX ──────────────────────────────
     $('#product').change(function () {
         var product = $(this).val();
