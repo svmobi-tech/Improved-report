@@ -1,391 +1,196 @@
 <?php
-
-ini_set('max_execution_time', 6000000);
-//error_reporting(0);
-include("includes/check_session.php");
-if($_SESSION['admin']==0)
-{
-	//echo "<script>alert('you are not allow to use this report');</script>";
-	//			echo "<script>window.location='report.php'</script>";
-	//header('location:report.php');
-}
-//include("includes/connection.php");
+ini_set('max_execution_time', 6000);
 date_default_timezone_set("Asia/Calcutta");
+error_reporting(0);
 
-$con=new mysqli("10.34.240.214","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
-$con3=new mysqli("10.34.240.214","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
+$pageTitle = 'Performance Report (Dated)';
+$pageIcon  = 'fa-tachometer';
 
-
-
-
-
-//$con1=new mysqli("10.125.0.50","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster1
-
-$con1=$con;
-$start_date='';
-$end_date='';
-$country='';
-$product='';
-$count=0;
-$cc=0;
- //$sql_ad="select * from gamebardb_vodafone_qatar_report.mainreportquery where `performance` !=''  ORDER BY product,country,operator ";
-//$res_op=mysqli_query($con3,$sql_ad);
-
-$yesterday=date('Y-m-d', strtotime( ' -1 day'));
-$twoday=date('Y-m-d', strtotime( ' -2 day'));
-$lastday=date('Y-m').'-01';
-//echo $totaldays=$lastday-$yesterday;exit;
-// $totaldays=date_diff($lastday,$yesterday);
-
-//$diff=date_diff($date1,$date2);
-//$diff= $totaldays->format("%R%a days");
-
-//echo $diff;exit;
-
-//$todaystartdate=$today." 00:00:00";
-//$todayenddate=$today." 23:59:59";
-//$yesterdaystartdate=$yesterday." 00:00:00";
-//$yesterdayenddate=$yesterday." 23:59:59";
-
-
-
+include("includes/check_session.php");
 ?>
+<?php include("includes/header.php"); ?>
+<?php include("includes/sidebar.php"); ?>
+<div class="hp-main">
+<?php include("includes/top_navigation.php"); ?>
+<div class="hp-content">
 
-		<?php include("includes/header.php"); ?>
-		<?php include("includes/sidebar.php"); ?>
-		<?php include("includes/top_navigation.php"); ?>
-            
-			<style>
+<div id="perf2-results">
+    <div style="padding:80px;text-align:center">
+        <i class="fa fa-refresh" style="font-size:34px;color:#667eea;display:inline-block;animation:hp-spin 0.9s linear infinite"></i>
+        <p style="color:#a0aec0;margin-top:14px;font-size:14px">Loading performance data...</p>
+    </div>
+</div>
 
-.table>thead>tr>td{
-	
-	vertical-align:middle;
-	Border:1px solid #000;	}
-	
- .table>tbody>tr>td{
-	
-	vertical-align:middle;
-	Border:1px solid #000;	}
-	
-	
-	.table>tfooter>tr>td{
-	
-	vertical-align:middle;
-	Border:1px solid #ffffff;	}
+</div><!-- /.hp-content -->
+</div><!-- /.hp-main -->
 
-</style>
-
-        <!-- page content -->
-        <div class="right_col" role="main" >
-          <div class="footer_down">
-
-            
-            
-
-           
-			
-			<div class="row">
-
-				<div class="col-md-12 col-sm-12 col-xs-12">
-					<div class="x_panel">
-						
-						
-			<?php 
-			//echo $country;
-			
-				
-			
-				//echo $cc;exit;
-			?>	
-			
-					  <div class="x_content"  style="overflow:auto;">
-					  <input type="button" onclick="tableToExcel('dataTables-example', 'W3C Example Table')" value="Export to Excel"><br><br>
-						
-												<table id="dataTables-example" class="table table-striped " >
-							<thead style="background:#807d7d;color:#fff">
-							<td rowspan='3'><b>Country</b></td>
-							<td rowspan='3'><b>Product</b></td>
-							<td rowspan='3'><b>Operator</b></td>
-							<td colspan='4'><b>Activation</b></td>
-							<td colspan='4'><b>Renewal</b></td>
-							<td colspan='2' rowspan='2' ><b>% Growth</b></td>
-							
-							
-							
-							<tr>
-							<td colspan='2'><b><?php echo "Average of <br>".$lastday." To ".$yesterday?></b></td>
-							<td colspan='2'><b><?php echo $yesterday;?></b></td>
-							<td colspan='2'><b><?php echo "Average of <br>".$lastday." To ".$yesterday?></b></td>
-							<td colspan='2'><b><?php echo $yesterday;?></b></td>
-							
-							</tr>
-							
-								<tr>
-									<!--<td><strong>Country</strong></td>
-									<td><strong>Activation Count</strong></td>
-									<td><strong>url</strong></td>-->
-									
-									<td><b>Count</b></td>
-									<td><b>Amount</b></td>
-									<td><b>Count</b> </td>
-									<td><b>Amount</b></td> 
-									<td><b>Count</b> </td>
-									<td><b>Amount</b></td> 
-									<td><b>Count</b> </td>
-									<td><b>Amount</b></td> 
-									<td><b>% Growth Activation</b></td>
-									<td><b>% Growth Renewal</b></td>
-									
-									
-									
-								</tr>
-							</thead>
-
-
-							<tbody>
-								<?php
-								$totalact=$totalactamount=$totalrenewcount=$totalrenewamount=$totaltotalcount=$totaltotalamount=$totaldigiinvest=$totalrevenue=$totalprofit=$totalptotal=$totalpdigitin=$totalprevenue=$totalpprofit=0;
-								
-									$query="select 
-
-												a.`product`,
-												a.`country`,
-												a.`operator`,
-
-												lastactavg,
-												lastactamtavg,
-												lastrenavg,
-												lastrenamtavg,
-												yestactcount,
-												yestactamtcount,
-												yetrencount,
-												yestrenamtcount
-												from
-												(SELECT 
-														   `product`,
-														   `country`,
-														   `operator`,
-															avg(`actcount`)lastactavg,
-															avg(`actamount`)lastactamtavg,
-															avg(`renewcount`)lastrenavg,
-															avg(`renewamount`)lastrenamtavg
-													FROM
-														gamebardb_vodafone_qatar_report.mainreport
-													WHERE
-														`Date` >= '".$lastday."'
-															AND  `Date` <='".$yesterday."'
-															and `advertiser`=0
-															group by  product,country,operator)a
-															
-															
-												 join
-
-												(
-												SELECT 
-														   `product`,
-														   `country`,
-														   `operator`,
-															`actcount` yestactcount,
-															`actamount` yestactamtcount,
-														   `renewcount` yetrencount,
-															`renewamount` yestrenamtcount
-													FROM
-														gamebardb_vodafone_qatar_report.mainreport
-													WHERE
-														`Date` >= '".$yesterday."'
-															AND  `Date` <='".$yesterday."'
-															and `advertiser`=0
-															
-												)b
-
-												on a.`product`=	b.product  and a.operator=b.operator order by product,country,operator";
-												
-									//echo $query;exit;			
-									$res=mysqli_query($con,$query);
-									while($row=mysqli_fetch_array($res))
-									{
-									
-									$product=$row['product'];
-									$country=$row['country'];
-									$operator=$row['operator'];
-									$lastactavg=$row['lastactavg'];
-									$lastactamtavg=$row['lastactamtavg'];
-									$lastrenavg=$row['lastrenavg'];
-									$lastrenamtavg=$row['lastrenamtavg'];
-									$yestactcount=$row['yestactcount'];
-									$yestactamtcount=$row['yestactamtcount'];
-									$yetrencount=$row['yetrencount'];
-									$yestrenamtcount=$row['yestrenamtcount'];
-									
-									
-								?>
-									<tr  style="background:white;color:Black">
-									
-									
-										
-										<td style="background:#dedbdb;color:Black"><b><?php echo $country;?></b> </td>
-										<td style="background:#dedbdb;color:Black"><b><?php echo $product;?></b> </td>
-										<td style="background:#dedbdb;color:Black"><b><?php echo $operator;?></b> </td>
-										
-										<td><?php echo number_format($lastactavg,0,'.',',');?> </td>
-										<td><?php echo number_format($lastactamtavg,1,'.',',');?> </td>
-										
-										
-										
-										<td><?php echo number_format($yestactcount,0,'.',',');?> </td>
-										<td><?php echo number_format($yestactamtcount,1,'.',',');?> </td>
-										
-										
-										<td><?php echo number_format($lastrenavg,0,'.',',');?> </td>
-										<td><?php echo number_format($lastrenamtavg,1,'.',',');?> </td>
-										
-										
-										
-										
-										
-										<td><?php echo number_format($yetrencount,0,'.',',');?> </td>
-										<td><?php echo number_format($yestrenamtcount,1,'.',',');?> </td>
-										
-										<?php $kk1=number_format(($yestactamtcount-$lastactamtavg)/$lastactamtavg*100,1,'.',',');
-										$kk2=number_format(($yestrenamtcount-$lastrenamtavg)/$lastrenamtavg*100,1,'.',',');?>
-										
-										<td style='color:white;font-weight:bold;<?php if($kk1>=0){echo "background:#79d279";}else{echo "background:#ff9999";}?>;padding:15px;'><?php echo number_format(($yestactamtcount-$lastactamtavg)/$lastactamtavg*100,1,'.',',')."%";?> </td>
-										<td style='color:white;font-weight:bold;<?php if($kk2>=0){echo "background:#79d279";}else{echo "background:#ff9999";}?>;padding:15px;'><?php echo number_format(($yestrenamtcount-$lastrenamtavg)/$lastrenamtavg*100,1,'.',',')."%";?> </td>
-										
-										
-									</tr>
-								<?php
-								}
-								
-								$res->close();
-								$con->next_result();
-								
-								
-								
-								
-								
-								?>
-								
-							</tbody>
-							
-							
-								
-								
-						</table>
-					  </div>
-				<!--<div id="advertiser"></div>-->
-			
-					</div>
-                </div>
-			</div>
-			
-		</div>
-        <!-- /page content -->
-		
-       <?php
-	   include("includes/footer.php");
-		?>
-		
-<script type="text/javascript">
- 
-</script>		
-		
-		
-		
-		
-		
-<script type="text/javascript">
- $(document).ready(function(){
-
-   $("#product").change(function(){
-		
-		var check1=$("#check1").val();
-		if(check1 == 0)
-		{
-			
-		}
-		else	
-		{
-			$(".sel1").val('');
-			$("#t1").hide();
-			$("#f1").show();
-						
-		}
-       
-		var product = $("#product").val();
-        $.ajax({
-            type: "GET",
-            url: "ajax/find_country.php?product="+product         
-			
-        }).done(function(data){
-            $(".response1").html(data);
-			 
-        });
-    });
-});
-</script>
-<script type="text/javascript">
-function myfun1() {
-var check1=$("#check1").val();
-		if(check1 == 0)
-		{
-			
-		}
-		else	
-		{
-			$(".sel").val('');
-			$("#t").hide();
-			$("#f").show();
-						
-		}
-        var country = $("#country").val();
-		var product = $("#product").val();
-        $.ajax({
-            type: "GET",
-            url: "ajax/advertiser.php?country="+country+"&product="+product         
-			
-        }).done(function(data){
-            $(".response").html(data);
-			 
-        });
-
-}	
-</script>		
-
-
-
+<?php include("includes/footer.php"); ?>
 
 <script>
- function getdata(startdate,enddate,db,dblog,advertiser,parameter){
+$(document).ready(function () {
 
-  
-  if (window.XMLHttpRequest) {
-            // code for IE7+, Firefox, Chrome, Opera, Safari
-            xmlhttp = new XMLHttpRequest();
-        } else {
-            // code for IE6, IE5
-            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+    $.ajax({
+        url   : 'ajax/handler.php',
+        method: 'POST',
+        data  : { action: 'performance2_data' },
+        success: function (html) {
+            $('#perf2-results').html(html);
+
+            if (!$('#perf2-table').length) return;
+
+            $('#perf2-table').DataTable({
+                dom    : 'Bfrtip',
+                buttons: [
+                    { extend: 'copy',  className: 'btn-sm' },
+                    { extend: 'csv',   className: 'btn-sm' },
+                    { extend: 'excel', className: 'btn-sm' },
+                    {
+                        text     : 'PDF',
+                        className: 'btn-sm buttons-pdf buttons-html5',
+                        action: function () {
+
+                            // Build date label strings (mirrors PHP logic)
+                            function pad2(n) { return (n < 10 ? '0' : '') + n; }
+                            var months = ['Jan','Feb','Mar','Apr','May','Jun',
+                                          'Jul','Aug','Sep','Oct','Nov','Dec'];
+                            var yd = new Date();
+                            yd.setDate(yd.getDate() - 1);
+                            var yStr    = pad2(yd.getDate()) + ' ' + months[yd.getMonth()] + ' ' + yd.getFullYear();
+                            var firstDt = new Date(yd.getFullYear(), yd.getMonth(), 1);
+                            var avgStr  = pad2(firstDt.getDate()) + ' ' + months[firstDt.getMonth()] +
+                                          ' – ' + yStr;
+
+                            // Read data rows from DOM (captures inline bg colors for % Growth)
+                            var tableRows = [];
+                            $('#perf2-table tbody tr').each(function () {
+                                var row = [];
+                                $(this).find('td').each(function (ci) {
+                                    var style = $(this).attr('style') || '';
+                                    var bgM   = style.match(/background:\s*(#[0-9a-fA-F]{6})/i);
+                                    var fill  = bgM ? bgM[1] : null;
+                                    var cell  = { text: $(this).text().trim() };
+                                    if (ci < 3) {
+                                        cell.fillColor = '#e2e0e0';
+                                        cell.bold      = true;
+                                    } else if (fill) {
+                                        cell.fillColor = fill;
+                                        cell.color     = '#ffffff';
+                                        cell.bold      = true;
+                                        cell.alignment = 'center';
+                                    } else {
+                                        cell.alignment = 'center';
+                                    }
+                                    row.push(cell);
+                                });
+                                tableRows.push(row);
+                            });
+
+                            var widths = [65, 55, 120, '*', '*', '*', '*', '*', '*', '*', '*', 65, 65];
+
+                            // Factory: fresh cell objects every call — pdfmake mutates
+                            // span placeholders, so reuse would corrupt subsequent pages
+                            function makeHdrRows() {
+                                function h(txt, extra) {
+                                    var c = { text: txt, style: 'hdr', alignment: 'center' };
+                                    if (extra) { for (var k in extra) { c[k] = extra[k]; } }
+                                    return c;
+                                }
+                                return [
+                                    [
+                                        h('Country',    { rowSpan: 3, alignment: 'left' }),
+                                        h('Product',    { rowSpan: 3, alignment: 'left' }),
+                                        h('Operator',   { rowSpan: 3, alignment: 'left' }),
+                                        h('Activation', { colSpan: 4 }), {}, {}, {},
+                                        h('Renewal',    { colSpan: 4 }), {}, {}, {},
+                                        h('% Growth',   { colSpan: 2, rowSpan: 2 }), {}
+                                    ],
+                                    [
+                                        {}, {}, {},
+                                        h(avgStr, { colSpan: 2, fontSize: 5.5 }), {},
+                                        h(yStr,   { colSpan: 2, fontSize: 5.5 }), {},
+                                        h(avgStr, { colSpan: 2, fontSize: 5.5 }), {},
+                                        h(yStr,   { colSpan: 2, fontSize: 5.5 }), {},
+                                        {}, {}
+                                    ],
+                                    [
+                                        {}, {}, {},
+                                        h('Count'), h('Amount'), h('Count'), h('Amount'),
+                                        h('Count'), h('Amount'), h('Count'), h('Amount'),
+                                        h('% Growth Act.'), h('% Growth Ren.')
+                                    ]
+                                ];
+                            }
+
+                            var tblLayout = {
+                                hLineWidth   : function () { return 0.4; },
+                                vLineWidth   : function () { return 0.4; },
+                                hLineColor   : function () { return '#cbd5e0'; },
+                                vLineColor   : function () { return '#cbd5e0'; },
+                                paddingLeft  : function () { return 3; },
+                                paddingRight : function () { return 3; },
+                                paddingTop   : function () { return 2; },
+                                paddingBottom: function () { return 2; }
+                            };
+
+                            pdfMake.createPdf({
+                                pageSize    : { width: 1190.55, height: 841.89 },
+                                pageMargins : [10, 73, 10, 10],
+                                defaultStyle: { fontSize: 6 },
+                                styles: {
+                                    hdr: { bold: true, fontSize: 6.5, color: '#ffffff', fillColor: '#4a5568' }
+                                },
+                                header: function () {
+                                    return [
+                                        {
+                                            columns: [
+                                                { text: 'Performance Report  |  SVMobi', bold: true, fontSize: 11, color: '#2d3748' },
+                                                { text: yStr + '  vs.  Monthly Average (' + avgStr + ')', fontSize: 8, color: '#718096', alignment: 'right', margin: [0, 3, 0, 0] }
+                                            ],
+                                            margin: [10, 6, 10, 4]
+                                        },
+                                        {
+                                            margin : [10, 0, 10, 0],
+                                            table  : { widths: widths, body: makeHdrRows() },
+                                            layout : tblLayout
+                                        }
+                                    ];
+                                },
+                                content: [
+                                    {
+                                        table : { widths: widths, body: tableRows },
+                                        layout: tblLayout
+                                    }
+                                ]
+                            }).download('Performance_Report_Dated_SVMobi.pdf');
+                        }
+                    },
+                    {
+                        extend   : 'print',
+                        className: 'btn-sm',
+                        customize: function (win) {
+                            $(win.document.head).append(
+                                '<style>' +
+                                '@page { size: A3 landscape; margin: 5mm; }' +
+                                'body { margin: 0; font-size: 7pt; }' +
+                                'table { border-collapse: collapse; width: 100% !important; table-layout: fixed; }' +
+                                'table th, table td { font-size: 6pt; padding: 1px 2px; word-break: break-word; }' +
+                                '</style>'
+                            );
+                        }
+                    }
+                ],
+                ordering: false,
+                paging  : false
+            });
+        },
+        error: function () {
+            $('#perf2-results').html(
+                '<div style="padding:40px;text-align:center;color:#e53e3e">' +
+                '<i class="fa fa-exclamation-circle" style="font-size:32px;display:block;margin-bottom:10px"></i>' +
+                'Failed to load performance data. Please refresh the page.</div>'
+            );
         }
-        xmlhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-                document.getElementById("advertiser").innerHTML = this.responseText;
-            }
-        };
-        xmlhttp.open("GET","mehul_ajax/mehul_ajax.php?startdate="+startdate+"&enddate="+enddate+"&db="+db+"&dblog="+dblog+"&advertiser="+advertiser+"&parameter="+parameter,true);
-        xmlhttp.send();
-    }
- 
- </script>   
- <script type="text/javascript">
-var tableToExcel = (function() {
-  var uri = 'data:application/vnd.ms-excel;base64,'
-    , template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>{table}</table></body></html>'
-    , base64 = function(s) { return window.btoa(unescape(encodeURIComponent(s))) }
-    , format = function(s, c) { return s.replace(/{(\w+)}/g, function(m, p) { return c[p]; }) }
-  return function(table, name) {
-    if (!table.nodeType) table = document.getElementById(table)
-    var ctx = {worksheet: name || 'Worksheet', table: table.innerHTML}
-    window.location.href = uri + base64(format(template, ctx))
-  }
-})()
+    });
+
+});
 </script>

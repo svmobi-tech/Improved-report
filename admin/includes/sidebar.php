@@ -42,8 +42,8 @@
     <li class="<?php echo $currentPage === 'performance.php' ? 'active' : ''; ?>">
       <a href="performance.php"><i class="fa fa-calendar"></i> Last 30 Days</a>
     </li>
-    <li class="<?php echo $currentPage === 'performance1.php' ? 'active' : ''; ?>">
-      <a href="performance1.php"><i class="fa fa-tachometer"></i> Current Month</a>
+    <li class="<?php echo $currentPage === 'performance2.php' ? 'active' : ''; ?>">
+      <a href="performance2.php"><i class="fa fa-tachometer"></i> Current Month</a>
     </li>
     <li class="<?php echo $currentPage === 'advertiser_urls.php' ? 'active' : ''; ?>">
       <a href="advertiser_urls.php"><i class="fa fa-link"></i> Advertiser Urls</a>

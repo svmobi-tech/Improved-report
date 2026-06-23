@@ -18,6 +18,7 @@ switch ($action) {
     case 'trend_data':               action_trend_data($con);               break;
     case 'last_activity_data':       action_last_activity_data($con);       break;
     case 'performance_data':         action_performance_data($con);         break;
+    case 'performance2_data':        action_performance2_data($con);        break;
     case 'dashboard_data':           action_dashboard_data($con);           break;
     default:
         http_response_code(400);
@@ -1105,6 +1106,130 @@ function action_performance_data(mysqli $con): void
                     <th colspan="2">Yesterday</th>
                     <th colspan="2">AVG. Last 30 Days</th>
                     <th colspan="2">Yesterday</th>
+                </tr>
+                <tr>
+                    <th>Count</th><th>Amount</th>
+                    <th>Count</th><th>Amount</th>
+                    <th>Count</th><th>Amount</th>
+                    <th>Count</th><th>Amount</th>
+                    <th>% Growth Act.</th>
+                    <th>% Growth Ren.</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rows as $r):
+                    $kk1 = (float)$r['lastactamtavg'] != 0
+                        ? ((float)$r['yestactamtcount'] - (float)$r['lastactamtavg']) / (float)$r['lastactamtavg'] * 100 : 0;
+                    $kk2 = (float)$r['lastrenamtavg'] != 0
+                        ? ((float)$r['yestrenamtcount'] - (float)$r['lastrenamtavg']) / (float)$r['lastrenamtavg'] * 100 : 0;
+                ?>
+                <tr>
+                    <td style="background:#dedbdb;font-weight:600;"><?php echo htmlspecialchars($r['country']); ?></td>
+                    <td style="background:#dedbdb;font-weight:600;"><?php echo htmlspecialchars($r['product']); ?></td>
+                    <td style="background:#dedbdb;font-weight:600;"><?php echo htmlspecialchars($r['operator']); ?></td>
+                    <td><?php echo number_format((float)$r['lastactavg'],      0); ?></td>
+                    <td><?php echo number_format((float)$r['lastactamtavg'],   1); ?></td>
+                    <td><?php echo number_format((float)$r['yestactcount'],    0); ?></td>
+                    <td><?php echo number_format((float)$r['yestactamtcount'], 1); ?></td>
+                    <td><?php echo number_format((float)$r['lastrenavg'],      0); ?></td>
+                    <td><?php echo number_format((float)$r['lastrenamtavg'],   1); ?></td>
+                    <td><?php echo number_format((float)$r['yetrencount'],     0); ?></td>
+                    <td><?php echo number_format((float)$r['yestrenamtcount'], 1); ?></td>
+                    <td style="color:#fff;font-weight:bold;background:<?php echo $kk1 >= 0 ? '#68d391' : '#fc8181'; ?>;">
+                        <?php echo number_format($kk1, 1) . '%'; ?>
+                    </td>
+                    <td style="color:#fff;font-weight:bold;background:<?php echo $kk2 >= 0 ? '#68d391' : '#fc8181'; ?>;">
+                        <?php echo number_format($kk2, 1) . '%'; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+    <?php
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTION: Performance2 data table (shows actual date ranges in headers)
+// Called by: performance2.php  →  POST ajax/handler.php?action=performance2_data
+// ═══════════════════════════════════════════════════════════════════════════════
+function action_performance2_data(mysqli $con): void
+{
+    $report    = 'gamebardb_vodafone_qatar_report';
+    $yesterday = date('Y-m-d', strtotime('-1 day'));
+    $lastday   = date('Y-m') . '-01';
+    $avgLabel  = date('d M', strtotime($lastday)) . ' – ' . date('d M Y', strtotime($yesterday));
+    $ydLabel   = date('d M Y', strtotime($yesterday));
+
+    $sql = "
+        SELECT a.product, a.country, a.operator,
+               lastactavg, lastactamtavg, lastrenavg, lastrenamtavg,
+               yestactcount, yestactamtcount, yetrencount, yestrenamtcount
+        FROM (
+            SELECT product, country, operator,
+                   AVG(actcount)    AS lastactavg,
+                   AVG(actamount)   AS lastactamtavg,
+                   AVG(renewcount)  AS lastrenavg,
+                   AVG(renewamount) AS lastrenamtavg
+            FROM {$report}.mainreport
+            WHERE Date >= '{$lastday}' AND Date <= '{$yesterday}' AND advertiser = 0
+            GROUP BY product, country, operator
+        ) a
+        JOIN (
+            SELECT product, country, operator,
+                   actcount    AS yestactcount,
+                   actamount   AS yestactamtcount,
+                   renewcount  AS yetrencount,
+                   renewamount AS yestrenamtcount
+            FROM {$report}.mainreport
+            WHERE Date = '{$yesterday}' AND advertiser = 0
+        ) b ON a.product = b.product AND a.operator = b.operator
+        ORDER BY product, country, operator
+    ";
+
+    $res = mysqli_query($con, $sql);
+    if (!$res) {
+        echo '<div style="padding:40px;text-align:center;color:#e53e3e">Query failed. Please try again.</div>';
+        return;
+    }
+
+    $rows = [];
+    while ($row = mysqli_fetch_assoc($res)) { $rows[] = $row; }
+    $res->close();
+
+    if (empty($rows)) {
+        echo '<div style="padding:60px;text-align:center">
+                <i class="fa fa-inbox" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:16px"></i>
+                <p style="color:#a0aec0;margin:0">No performance data found for yesterday.</p>
+              </div>';
+        return;
+    }
+    ?>
+<div class="hp-card">
+    <div class="hp-card-header">
+        <h4><i class="fa fa-tachometer"></i> Performance Report
+            <small style="font-size:12px;font-weight:400;color:#a0aec0;margin-left:10px;">
+                <?php echo htmlspecialchars($ydLabel); ?> vs. Monthly Average (<?php echo htmlspecialchars($avgLabel); ?>)
+            </small>
+        </h4>
+    </div>
+    <div class="hp-card-body" style="padding:0;overflow-x:auto;">
+        <table id="perf2-table" class="table table-striped table-bordered" style="font-size:12.5px;">
+            <thead style="background:#4a5568;color:#fff;text-align:center;">
+                <tr>
+                    <th rowspan="3">Country</th>
+                    <th rowspan="3">Product</th>
+                    <th rowspan="3">Operator</th>
+                    <th colspan="4">Activation</th>
+                    <th colspan="4">Renewal</th>
+                    <th colspan="2" rowspan="2">% Growth</th>
+                </tr>
+                <tr>
+                    <th colspan="2"><?php echo htmlspecialchars($avgLabel); ?></th>
+                    <th colspan="2"><?php echo htmlspecialchars($ydLabel); ?></th>
+                    <th colspan="2"><?php echo htmlspecialchars($avgLabel); ?></th>
+                    <th colspan="2"><?php echo htmlspecialchars($ydLabel); ?></th>
                 </tr>
                 <tr>
                     <th>Count</th><th>Amount</th>
