@@ -21,6 +21,7 @@ switch ($action) {
     case 'performance2_data':        action_performance2_data($con);        break;
     case 'contest_data':             action_contest_data($con);             break;
     case 'contest_charging_data':    action_contest_charging_data($con);    break;
+    case 'promotion_data':           action_promotion_data($con);           break;
     case 'urlmake_operators':        action_urlmake_operators($con);        break;
     case 'urlmake_advertisers':      action_urlmake_advertisers($con);      break;
     case 'urlmake_generate':         action_urlmake_generate($con);         break;
@@ -1577,6 +1578,123 @@ function action_contest_charging_data(mysqli $con): void
                     <td><?php echo number_format($oneshot_sum); ?></td>
                     <td><?php echo number_format($oneshotamt_sum, 2); ?></td>
                     <td><?php echo number_format($total_amt, 2); ?></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+    <?php
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTION: Promotional Activity data
+// Called by: promotion.php  →  POST ajax/handler.php?action=promotion_data
+// POST params: country, start_date (d-m-Y), end_date (d-m-Y)
+// Returns: HTML table
+// ═══════════════════════════════════════════════════════════════════════════════
+function action_promotion_data(mysqli $con): void
+{
+    $country   = trim($_POST['country']    ?? 'qa');
+    $start_raw = trim($_POST['start_date'] ?? date('d-m-Y'));
+    $end_raw   = trim($_POST['end_date']   ?? date('d-m-Y'));
+
+    $db = ($country === 'bh') ? 'contestdb_bh' : 'contestdb_qaoo';
+
+    $dtStart = DateTime::createFromFormat('d-m-Y', $start_raw);
+    $dtEnd   = DateTime::createFromFormat('d-m-Y', $end_raw);
+    if (!$dtStart || !$dtEnd) {
+        echo '<div style="padding:40px;text-align:center;color:#e53e3e">Invalid date format. Please use the date picker.</div>';
+        return;
+    }
+
+    $startdate = $dtStart->format('Y-m-d') . ' 00:00:00';
+    $enddate   = $dtEnd->format('Y-m-d')   . ' 23:59:59';
+
+    $sql = "
+        SELECT SUM(promocount) AS promo, SUM(subcount) AS act, dt
+        FROM (
+            SELECT COUNT(DISTINCT msisdn) AS promocount, 0 AS subcount,
+                   DATE(mtdatetime) AS dt
+            FROM {$db}.promotions
+            WHERE status = 'success'
+              AND mtdatetime >= '{$startdate}'
+              AND mtdatetime <= '{$enddate}'
+            GROUP BY dt
+            UNION ALL
+            SELECT 0 AS promocount, COUNT(promotions.msisdn) AS subcount,
+                   DATE(mtdatetime) AS dt
+            FROM {$db}.promotions
+            INNER JOIN {$db}.subscriber ON promotions.msisdn = subscriber.msisdn
+            WHERE charging_mode = 'optin'
+              AND mtdatetime >= '{$startdate}'
+              AND mtdatetime <= '{$enddate}'
+              AND subscriptionstartdate >= '{$startdate}'
+              AND subscriptionstartdate <= '{$enddate}'
+            GROUP BY dt
+        ) a
+        GROUP BY dt
+        ORDER BY dt ASC
+    ";
+
+    $res = mysqli_query($con, $sql);
+    if (!$res) {
+        echo '<div style="padding:40px;text-align:center;color:#e53e3e">
+                <i class="fa fa-exclamation-circle" style="font-size:32px;display:block;margin-bottom:10px"></i>
+                Query failed. Please try again.
+              </div>';
+        return;
+    }
+
+    $rows = [];
+    while ($row = mysqli_fetch_assoc($res)) { $rows[] = $row; }
+    $res->close();
+
+    if (empty($rows)) {
+        echo '<div style="padding:60px;text-align:center">
+                <i class="fa fa-inbox" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:16px"></i>
+                <p style="color:#a0aec0;margin:0">No records found for the selected period.</p>
+              </div>';
+        return;
+    }
+
+    $promo_sum = $act_sum = 0;
+    foreach ($rows as $r) {
+        $promo_sum += (int)$r['promo'];
+        $act_sum   += (int)$r['act'];
+    }
+    ?>
+<div class="hp-card">
+    <div class="hp-card-header">
+        <h4><i class="fa fa-bullhorn"></i> Promotional Activity
+            <small style="font-size:12px;font-weight:400;color:rgba(255,255,255,.7);margin-left:10px;">
+                <?php echo strtoupper(htmlspecialchars($country)); ?> &middot;
+                <?php echo $dtStart->format('d M Y'); ?> – <?php echo $dtEnd->format('d M Y'); ?>
+            </small>
+        </h4>
+    </div>
+    <div class="hp-card-body" style="padding:0;overflow-x:auto;">
+        <table id="promo-table" class="table table-striped table-bordered" style="font-size:13px;margin:0;">
+            <thead style="background:#4a5568;color:#fff;text-align:center;">
+                <tr>
+                    <th style="text-align:center;">Date</th>
+                    <th style="text-align:center;">Promotions</th>
+                    <th style="text-align:center;">Activation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rows as $r): ?>
+                <tr>
+                    <td style="text-align:center;"><?php echo htmlspecialchars($r['dt']); ?></td>
+                    <td style="text-align:center;"><?php echo number_format((int)$r['promo']); ?></td>
+                    <td style="text-align:center;"><?php echo number_format((int)$r['act']); ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+            <tfoot>
+                <tr style="font-weight:bold;background:#4a5568;color:#fff;text-align:center;">
+                    <td>Total</td>
+                    <td><?php echo number_format($promo_sum); ?></td>
+                    <td><?php echo number_format($act_sum); ?></td>
                 </tr>
             </tfoot>
         </table>

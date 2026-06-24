@@ -61,8 +61,8 @@
         <li class="<?php echo $currentPage === 'contest_charging.php'       ? 'active' : ''; ?>">
           <a href="contest_charging.php">Charging Report</a>
         </li>
-        <li class="<?php echo $currentPage === 'promotional_activity.php'  ? 'active' : ''; ?>">
-          <a href="promotional_activity.php">Promotional Activity</a>
+        <li class="<?php echo $currentPage === 'promotion.php'  ? 'active' : ''; ?>">
+          <a href="promotion.php">Promotional Activity</a>
         </li>
         <li class="<?php echo $currentPage === 'engagement_activity.php'   ? 'active' : ''; ?>">
           <a href="engagement_activity.php">Engagement Activity</a>
