@@ -5,6 +5,8 @@ error_reporting(0);
 
 $pageTitle = 'Main Report';
 $pageIcon  = 'fa-file-text-o';
+include("includes/check_session.php");
+
 ?>
 <?php include("includes/header.php"); ?>
 <?php include("includes/sidebar.php"); ?>
