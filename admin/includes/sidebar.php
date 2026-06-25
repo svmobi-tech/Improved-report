@@ -90,7 +90,7 @@
         'partner_tracking_report.php','pub_report.php',
         'activationsetting.php','callbackssetting.php',
         'cron_running_report.php','currency.php',
-        'callbacksentreport.php','callbackanalysis.php',
+        'callbackreport.php','callbackanalysis.php',
         'adduat.php','alluat.php','checkactivation.php',
       ];
       $otherOpen = in_array($currentPage, $otherPages) ? 'open' : '';
@@ -116,14 +116,14 @@
         <li class="<?php echo $currentPage === 'callbackssetting.php'       ? 'active' : ''; ?>">
           <a href="callbackssetting.php"><i class="fa fa-file-text-o"></i> Callback Settings</a>
         </li>
-        <li class="<?php echo $currentPage === 'cron_running_report.php'    ? 'active' : ''; ?>">
+        <!-- <li class="<?php echo $currentPage === 'cron_running_report.php'    ? 'active' : ''; ?>">
           <a href="cron_running_report.php"><i class="fa fa-file-text-o"></i> Cron Analysis</a>
-        </li>
+        </li> -->
         <li class="<?php echo $currentPage === 'currency.php'               ? 'active' : ''; ?>">
           <a href="currency.php"><i class="fa fa-file-text-o"></i> Currency</a>
         </li>
-        <li class="<?php echo $currentPage === 'callbacksentreport.php'     ? 'active' : ''; ?>">
-          <a href="callbacksentreport.php"><i class="fa fa-file-text-o"></i> CallBackSent Report</a>
+        <li class="<?php echo $currentPage === 'callbackreport.php'     ? 'active' : ''; ?>">
+          <a href="callbackreport.php"><i class="fa fa-file-text-o"></i> CallBackSent Report</a>
         </li>
         <li class="<?php echo $currentPage === 'callbackanalysis.php'       ? 'active' : ''; ?>">
           <a href="callbackanalysis.php"><i class="fa fa-file-text-o"></i> CallBackSent Analysis</a>

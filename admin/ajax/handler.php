@@ -29,6 +29,9 @@ switch ($action) {
     case 'activation_setting_update':    action_activation_setting_update($con);    break;
     case 'callback_setting_load':        action_callback_setting_load($con);        break;
     case 'callback_setting_update':      action_callback_setting_update($con);      break;
+    case 'currency_load':                action_currency_load($con);                break;
+    case 'currency_update':             action_currency_update($con);              break;
+    case 'callback_report_load':        action_callback_report_load($con);         break;
     case 'urlmake_operators':            action_urlmake_operators($con);            break;
     case 'urlmake_advertisers':      action_urlmake_advertisers($con);      break;
     case 'urlmake_generate':         action_urlmake_generate($con);         break;
@@ -856,7 +859,13 @@ function action_trend_data(mysqli $con): void
 
     $res = mysqli_query($con, $query);
     if (!$res) {
-        echo '<div style="padding:40px;text-align:center;color:#e53e3e">Query failed. Please check trend URL configuration.</div>';
+        echo '<div class="hp-card" style="margin-top:16px">
+                <div class="hp-card-body" style="padding:60px;text-align:center">
+                    <i class="fa fa-bar-chart" style="font-size:52px;color:#e2e8f0;display:block;margin-bottom:18px"></i>
+                    <p style="color:#a0aec0;font-size:15px;margin:0 0 6px;font-weight:600">No Data Available</p>
+                    <p style="color:#cbd5e0;font-size:13px;margin:0">No trend data found for the selected filters.<br>Try changing the date range, product, or operator.</p>
+                </div>
+              </div>';
         return;
     }
 
@@ -876,9 +885,12 @@ function action_trend_data(mysqli $con): void
     if ($prevdate !== '') $dt[$prevdate] = '';
 
     if (empty($dt)) {
-        echo '<div style="padding:60px;text-align:center">
-                <i class="fa fa-inbox" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:16px"></i>
-                <p style="color:#a0aec0;margin:0">No records found for the selected filters.</p>
+        echo '<div class="hp-card" style="margin-top:16px">
+                <div class="hp-card-body" style="padding:60px;text-align:center">
+                    <i class="fa fa-bar-chart" style="font-size:52px;color:#e2e8f0;display:block;margin-bottom:18px"></i>
+                    <p style="color:#a0aec0;font-size:15px;margin:0 0 6px;font-weight:600">No Data Available</p>
+                    <p style="color:#cbd5e0;font-size:13px;margin:0">No trend data found for the selected filters.<br>Try changing the date range, product, or operator.</p>
+                </div>
               </div>';
         return;
     }
@@ -2917,4 +2929,239 @@ function action_callback_setting_update(mysqli $con): void
 
     $ok = $con->query($sql);
     echo json_encode(['ok' => (bool)$ok, 'msg' => $ok ? '' : $con->error]);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTION: Currency — load table
+// Called by: currency.php  →  POST ajax/handler.php?action=currency_load
+// Returns: HTML table
+// ═══════════════════════════════════════════════════════════════════════════════
+function action_currency_load(mysqli $con): void
+{
+    $sql = "SELECT id, country, toinr
+            FROM gamebardb_vodafone_qatar_report.currency
+            ORDER BY country ASC";
+    $res = $con->query($sql);
+    if (!$res) {
+        echo '<div style="padding:40px;text-align:center;color:#e53e3e">
+                <strong>Query failed.</strong>
+                <div style="margin-top:8px;font-size:12px;color:#718096">'
+             . htmlspecialchars($con->error) .
+             '</div></div>';
+        return;
+    }
+
+    $rows = [];
+    while ($row = $res->fetch_assoc()) { $rows[] = $row; }
+    $res->close();
+
+    if (empty($rows)) {
+        echo '<div style="padding:60px;text-align:center">
+                <i class="fa fa-inbox" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:16px"></i>
+                <p style="color:#a0aec0;margin:0">No currency records found.</p>
+              </div>';
+        return;
+    }
+    ?>
+<div class="hp-card">
+    <div class="hp-card-header">
+        <h4><i class="fa fa-money"></i> Currency Rates
+            <small style="font-size:12px;font-weight:400;color:rgba(255,255,255,.7);margin-left:10px;">
+                <?php echo count($rows); ?> records
+            </small>
+        </h4>
+    </div>
+    <div class="hp-card-body">
+        <p style="margin-bottom:10px;font-size:12px;color:#718096;">
+            <i class="fa fa-info-circle"></i>
+            Edit the <strong>Rate (to INR)</strong> value and click outside the field to save instantly.
+        </p>
+        <div style="overflow-x:auto;">
+        <table id="cur-table" class="table table-striped table-bordered" style="width:100%">
+            <thead>
+                <tr>
+                    <th style="text-align:center">ID</th>
+                    <th style="text-align:center">Country</th>
+                    <th style="text-align:center">Rate (to INR)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rows as $row): ?>
+                <tr>
+                    <td style="text-align:center"><?php echo (int)$row['id']; ?></td>
+                    <td><?php echo htmlspecialchars($row['country']); ?></td>
+                    <td style="text-align:center">
+                        <input type="number" step="any" class="cur-input"
+                               style="width:100px;padding:4px 6px;border:1px solid #e2e8f0;border-radius:4px;text-align:center;font-size:13px;"
+                               value="<?php echo htmlspecialchars($row['toinr']); ?>"
+                               data-id="<?php echo (int)$row['id']; ?>"
+                               placeholder="0.00">
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+    <?php
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTION: Currency — update single row
+// Called by: currency.php  →  POST ajax/handler.php?action=currency_update
+// POST params: id (int), toinr (numeric)
+// Returns: JSON {ok: true} or {ok: false, msg: "..."}
+// ═══════════════════════════════════════════════════════════════════════════════
+function action_currency_update(mysqli $con): void
+{
+    header('Content-Type: application/json');
+
+    $id    = (int)($_POST['id']    ?? 0);
+    $toinr = trim($_POST['toinr']  ?? '');
+
+    if ($id <= 0 || $toinr === '' || !is_numeric($toinr)) {
+        echo json_encode(['ok' => false, 'msg' => 'Invalid parameters.']);
+        return;
+    }
+
+    $stmt = $con->prepare(
+        "UPDATE gamebardb_vodafone_qatar_report.currency SET toinr = ? WHERE id = ?"
+    );
+    if (!$stmt) {
+        echo json_encode(['ok' => false, 'msg' => $con->error]);
+        return;
+    }
+    $stmt->bind_param('di', $toinr, $id);
+    $ok = $stmt->execute();
+    $stmt->close();
+
+    echo json_encode(['ok' => $ok, 'msg' => $ok ? '' : $con->error]);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTION: Callback Report — summary by product/operator/advertiser
+// Called by: callbackreport.php  →  POST ajax/handler.php?action=callback_report_load
+// POST params: product, operator ('all' or specific), start_date (d-m-Y), end_date (d-m-Y)
+// ═══════════════════════════════════════════════════════════════════════════════
+function action_callback_report_load(mysqli $con): void
+{
+    $report = 'gamebardb_vodafone_qatar_report';
+
+    $product   = trim($_POST['product']    ?? '');
+    $operator  = trim($_POST['operator']   ?? '');
+    $start_raw = trim($_POST['start_date'] ?? date('d-m-Y'));
+    $end_raw   = trim($_POST['end_date']   ?? date('d-m-Y'));
+
+    if (!$product || !$operator) {
+        echo '<div class="hp-card" style="margin-top:16px"><div class="hp-card-body" style="padding:60px;text-align:center">
+                <i class="fa fa-exclamation-circle" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:16px"></i>
+                <p style="color:#a0aec0;font-size:14px;margin:0">Please select Product and Operator.</p>
+              </div></div>';
+        return;
+    }
+
+    $start_date = date('Y-m-d', strtotime($start_raw));
+    $end_date   = date('Y-m-d', strtotime($end_raw));
+    if ($start_date < '2020-04-13') $start_date = '2020-04-13';
+
+    if ($operator === 'all') {
+        $stmt = $con->prepare(
+            "SELECT mainreport.product, mainreport.operator, advname,
+                    SUM(cbsent) AS cbsum, SUM(pcsent) AS pcsent, operatorcost_usd
+             FROM {$report}.mainreport
+             LEFT JOIN {$report}.operatorcost ON mainreport.operator = operatorcost.operator
+             WHERE mainreport.date >= ? AND mainreport.date <= ?
+               AND mainreport.product = ?
+               AND advertiser > 0 AND cbsent > 0
+               AND operatorcost.product = ?
+             GROUP BY mainreport.product, mainreport.operator, advname, operatorcost_usd
+             ORDER BY mainreport.product ASC, mainreport.operator ASC"
+        );
+        $stmt->bind_param('ssss', $start_date, $end_date, $product, $product);
+    } else {
+        $stmt = $con->prepare(
+            "SELECT mainreport.product, mainreport.operator, advname,
+                    SUM(cbsent) AS cbsum, SUM(pcsent) AS pcsent, operatorcost_usd
+             FROM {$report}.mainreport
+             LEFT JOIN {$report}.operatorcost ON mainreport.operator = operatorcost.operator
+             WHERE mainreport.date >= ? AND mainreport.date <= ?
+               AND mainreport.product = ?
+               AND mainreport.operator = ?
+               AND advertiser > 0 AND cbsent > 0
+               AND operatorcost.product = ?
+             GROUP BY mainreport.product, mainreport.operator, advname, operatorcost_usd
+             ORDER BY mainreport.product ASC, mainreport.operator ASC"
+        );
+        $stmt->bind_param('sssss', $start_date, $end_date, $product, $operator, $product);
+    }
+
+    if (!$stmt || !$stmt->execute()) {
+        echo '<div class="hp-card" style="margin-top:16px"><div class="hp-card-body" style="padding:60px;text-align:center">
+                <i class="fa fa-bar-chart" style="font-size:52px;color:#e2e8f0;display:block;margin-bottom:18px"></i>
+                <p style="color:#a0aec0;font-size:15px;margin:0 0 6px;font-weight:600">No Data Available</p>
+                <p style="color:#cbd5e0;font-size:13px;margin:0">No callback data found for the selected filters.<br>Try changing the date range, product, or operator.</p>
+              </div></div>';
+        return;
+    }
+
+    $res  = $stmt->get_result();
+    $rows = [];
+    while ($r = $res->fetch_assoc()) $rows[] = $r;
+    $stmt->close();
+
+    if (empty($rows)) {
+        echo '<div class="hp-card" style="margin-top:16px"><div class="hp-card-body" style="padding:60px;text-align:center">
+                <i class="fa fa-inbox" style="font-size:52px;color:#e2e8f0;display:block;margin-bottom:18px"></i>
+                <p style="color:#a0aec0;font-size:15px;margin:0 0 6px;font-weight:600">No Data Available</p>
+                <p style="color:#cbd5e0;font-size:13px;margin:0">No records found for the selected filters.<br>Try changing the date range, product, or operator.</p>
+              </div></div>';
+        return;
+    }
+
+    $total_cb   = 0;
+    $total_pc   = 0;
+    $total_cost = 0.0;
+
+    $op_label = $operator === 'all' ? 'All Operators' : htmlspecialchars($operator);
+    $html  = '<div class="hp-card" style="margin-top:16px">';
+    $html .= '<div class="hp-card-header"><h4><i class="fa fa-phone"></i> Callback Report Results';
+    $html .= '<small style="font-size:12px;font-weight:400;color:rgba(255,255,255,.7);margin-left:10px;">';
+    $html .= htmlspecialchars($product) . ' &middot; ' . $op_label . ' &middot; ' . count($rows) . ' records</small>';
+    $html .= '</h4></div>';
+    $html .= '<div class="hp-card-body" style="overflow-x:auto;">';
+    $html .= '<table id="cbr-table" class="table table-striped table-bordered" style="width:100%">';
+    $html .= '<thead><tr>';
+    $html .= '<th>Product</th><th>Operator</th><th>Advertiser</th>';
+    $html .= '<th>Total Callback Sent</th><th>Pin-Confirmed</th>';
+    $html .= '<th>Cost/CB (USD)</th><th>Total Cost (USD)</th>';
+    $html .= '</tr></thead><tbody>';
+
+    foreach ($rows as $r) {
+        $cost_row    = round((float)$r['cbsum'] * (float)$r['operatorcost_usd'], 4);
+        $total_cb   += (int)$r['cbsum'];
+        $total_pc   += (int)$r['pcsent'];
+        $total_cost += $cost_row;
+
+        $html .= '<tr>';
+        $html .= '<td>'                           . htmlspecialchars($r['product'])           . '</td>';
+        $html .= '<td>'                           . htmlspecialchars($r['operator'])          . '</td>';
+        $html .= '<td>'                           . htmlspecialchars($r['advname'])           . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format((int)$r['cbsum'])          . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format((int)$r['pcsent'])         . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format((float)$r['operatorcost_usd'], 6) . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format($cost_row, 4)              . '</td>';
+        $html .= '</tr>';
+    }
+
+    $html .= '</tbody><tfoot><tr>';
+    $html .= '<th colspan="3" style="text-align:right;font-weight:700">Total</th>';
+    $html .= '<th style="text-align:right">' . number_format($total_cb)          . '</th>';
+    $html .= '<th style="text-align:right">' . number_format($total_pc)          . '</th>';
+    $html .= '<th></th>';
+    $html .= '<th style="text-align:right">' . number_format($total_cost, 4)     . '</th>';
+    $html .= '</tr></tfoot>';
+    $html .= '</table></div></div>';
+
+    echo $html;
 }

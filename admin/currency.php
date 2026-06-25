@@ -1,262 +1,164 @@
 <?php
-//include("includes/check_session.php");
-//include("includes/connection.php");
-error_reporting(0);
-include("includes/check_session.php");
-if($_SESSION['admin']==0)
-{
-	//echo "<script>alert('you are not allow to use this report');</script>";
-	//			echo "<script>window.location='report.php'</script>";
-	//header('location:report.php');
-}
+ini_set('max_execution_time', 6000);
 date_default_timezone_set("Asia/Calcutta");
 error_reporting(0);
-$con=new mysqli("10.34.240.214","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
-$con3=new mysqli("10.34.240.214","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
-//$con1=new mysqli("10.125.0.50","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster1
-$con1=$con;
-$start_date='';
-$end_date='';
-$operator='';
-$product='';
-$count=0;
-$cc=0;
 
+$pageTitle = 'Currency';
+$pageIcon  = 'fa-money';
 
-
-		$database= 'gamebardb_vodafone_qatar_report';
-		
-		$sql3="select * from ".$database.".currency";
-		$res_ad=mysqli_query($con,$sql3);
-	
-
-
+include("includes/check_session.php");
 ?>
+<?php include("includes/header.php"); ?>
+<?php include("includes/sidebar.php"); ?>
+<div class="hp-main">
+<?php include("includes/top_navigation.php"); ?>
+<div class="hp-content">
 
-		<?php include("includes/header.php"); ?>
-		<?php include("includes/sidebar.php"); ?>
-		<?php include("includes/top_navigation.php"); ?>
-            
-			
-
-        <!-- page content -->
-        <div class="right_col" role="main" >
-          <div class="footer_down">
-
-            
-            
-
-            
-			
-			<div class="row">
-
-				<div class="col-md-12 col-sm-12 col-xs-12">
-					<div class="x_panel">
-						<div class="x_title">
-							<h2>Currency Change Portal <small></small></h2>
-							<ul class="nav navbar-right panel_toolbox">
-							  <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
-							  </li>
-							  <li class="dropdown">
-								<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
-								<ul class="dropdown-menu" role="menu">
-								  <li><a href="#">Settings 1</a>
-								  </li>
-								  <li><a href="#">Settings 2</a>
-								  </li>
-								</ul>
-							  </li>
-							  <li><a class="close-link"><i class="fa fa-close"></i></a>
-							  </li>
-							</ul>
-							<div class="clearfix"></div>
-						</div>
-						
-			<?php 
-			//echo $sql;
-
-			?>	
-			
-					  <div class="x_content"  style="overflow:auto;">
-						
-						<table id="datatable-buttons" class="table table-striped table-bordered">
-							<thead>
-								<tr>
-									<td><strong>id</strong></td>
-									<td><strong>Country</strong></td>
-									<td><strong>Country to inr</strong></td><!--uniq-->
-									
-									
-									
-								</tr>
-							</thead>
-
-
-							<tbody>
-							<tr>
-							
-								<?php
-								
-									
-									while($row1=mysqli_fetch_array($res_ad))
-									{
-										?>
-										<td><?php echo $row1['id'];  ?></td>
-										<td><?php echo $row1['country'];?></td>
-										
-										<td><input type="text" style="width:60px;padding:3px;" value='<?php echo $row1['toinr']; ?>' onblur="stop_callback(this.value,<?php echo $row1['id']; ?>)" placeholder=""></td>
-										
-										
-										
-										
-										
-										
-									</tr>
-								
-								
-								
-								<?php
-									}
-								
-							
-							
-						?>		
-								
-						</table>
-					  </div>
-				<!--<div id="advertiser"></div>-->
-			
-							</tbody>
-							</table>
-					  </div>
-			
-			
-					</div>
+<div class="hp-card">
+    <div class="hp-card-header">
+        <h4><i class="fa fa-money"></i> Currency Change Portal</h4>
+    </div>
+    <div class="hp-card-body">
+        <div class="row">
+            <div class="col-md-3 col-sm-4 col-xs-12">
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button id="cur-btn" class="btn btn-primary btn-block">
+                        <i class="fa fa-refresh"></i> Refresh Rates
+                    </button>
                 </div>
-			</div>
-			
-		</div>
-        <!-- /page content -->
-		
-       <?php
-	   include("includes/footer.php");
-		?>
-		
-<script type="text/javascript">
- $(document).ready(function(){
+            </div>
+        </div>
+    </div>
+</div>
 
-   $("#operator").change(function(){
-		
-		var check1=$("#check1").val();
-		if(check1 == 0)
-		{
-			
-		}
-		else	
-		{
-			$(".sel").val('');
-			$("#t").hide();
-			$("#f").show();
-						
-		}
-        var operator = $("#operator").val();
-		var product = $("#product").val();
-        $.ajax({
-            type: "GET",
-            url: "ajax/find_advertiser.php?operator="+operator+"&product="+product         
-			
-        }).done(function(data){
-            $(".response").html(data);
-			 
+<div id="cur-results">
+    <div style="padding:60px;text-align:center">
+        <i class="fa fa-refresh" style="font-size:34px;color:#667eea;display:inline-block;animation:hp-spin 0.9s linear infinite"></i>
+        <p style="color:#a0aec0;margin-top:14px;font-size:14px">Loading currency rates...</p>
+    </div>
+</div>
+
+</div><!-- /.hp-content -->
+</div><!-- /.hp-main -->
+
+<?php include("includes/footer.php"); ?>
+
+<script>
+$(document).ready(function () {
+
+    function loadCurrency() {
+        $('#cur-btn').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
+        $('#cur-results').html(
+            '<div style="padding:60px;text-align:center">' +
+            '<i class="fa fa-refresh" style="font-size:34px;color:#667eea;display:inline-block;animation:hp-spin 0.9s linear infinite"></i>' +
+            '<p style="color:#a0aec0;margin-top:14px;font-size:14px">Loading currency rates...</p></div>'
+        );
+
+        $.post('ajax/handler.php', { action: 'currency_load' })
+        .done(function (html) {
+            $('#cur-results').html(html);
+
+            if ($('#cur-table').length) {
+                // exportBody: extracts input .val() for copy/csv/excel/print (DOM path)
+                // and reads value="..." attr from HTML string for pdfHtml5 (regex path)
+                var exportBody = function (data, row, column, node) {
+                    if (node) {
+                        var $inp = $(node).find('input.cur-input');
+                        if ($inp.length) return $inp.val();
+                    }
+                    if (typeof data === 'string' && data.indexOf('cur-input') !== -1) {
+                        var m = data.match(/\bvalue="([^"]*)"/);
+                        return m ? m[1] : '';
+                    }
+                    return data;
+                };
+                var exportOpts = { format: { body: exportBody } };
+
+                $('#cur-table').DataTable({
+                    dom      : 'Bfrtip',
+                    buttons  : [
+                        { extend: 'copy',  className: 'btn-sm', exportOptions: exportOpts },
+                        { extend: 'csv',   className: 'btn-sm', exportOptions: exportOpts },
+                        { extend: 'excel', className: 'btn-sm', exportOptions: exportOpts },
+                        {
+                            extend       : 'pdfHtml5',
+                            className    : 'btn-sm',
+                            title        : 'Currency Rates | SVMobi',
+                            orientation  : 'portrait',
+                            pageSize     : 'A4',
+                            exportOptions: exportOpts,
+                            customize    : function (doc) {
+                                doc.pageMargins = [40, 50, 40, 40];
+                                doc.defaultStyle.fontSize        = 11;
+                                doc.defaultStyle.alignment       = 'center';
+                                doc.styles.tableHeader.fontSize  = 11;
+                                doc.styles.tableHeader.alignment = 'center';
+                                doc.styles.tableBodyOdd.fontSize  = 11;
+                                doc.styles.tableBodyEven.fontSize = 11;
+                                doc.content.forEach(function (node) {
+                                    if (node.table) {
+                                        var cols = node.table.body[0].length;
+                                        node.table.widths = Array(cols).fill('*');
+                                        node.table.body.forEach(function (row) {
+                                            row.forEach(function (cell) {
+                                                if (typeof cell === 'object') cell.alignment = 'center';
+                                            });
+                                        });
+                                    }
+                                });
+                            }
+                        },
+                        { extend: 'print', className: 'btn-sm', exportOptions: exportOpts }
+                    ],
+                    order      : [[1, 'asc']],
+                    pageLength : 50
+                });
+            }
+        })
+        .fail(function () {
+            $('#cur-results').html(
+                '<div style="padding:40px;text-align:center;color:#e53e3e">' +
+                '<i class="fa fa-exclamation-circle" style="font-size:32px;display:block;margin-bottom:10px"></i>' +
+                'Failed to load currency rates. Please try again.</div>'
+            );
+        })
+        .always(function () {
+            $('#cur-btn').prop('disabled', false).html('<i class="fa fa-refresh"></i> Refresh Rates');
+        });
+    }
+
+    // Auto-load on page open
+    loadCurrency();
+    $('#cur-btn').on('click', loadCurrency);
+
+    // Inline update on blur — event delegation survives DataTables re-render
+    $(document).on('blur', '.cur-input', function () {
+        var $inp  = $(this);
+        var id    = $inp.data('id');
+        var toinr = $inp.val().trim();
+
+        if (toinr === '') return;
+
+        $inp.css({ 'background': '#fffde7', 'border-color': '#f6c000' });
+
+        $.post('ajax/handler.php', {
+            action: 'currency_update',
+            id    : id,
+            toinr : toinr
+        }, function (res) {
+            if (res.ok) {
+                $inp.css({ 'background': '#e8f5e9', 'border-color': '#43a047' });
+            } else {
+                $inp.css({ 'background': '#ffebee', 'border-color': '#e53935' });
+                console.warn('Currency update failed:', res.msg);
+            }
+            setTimeout(function () { $inp.css({ 'background': '', 'border-color': '' }); }, 2000);
+        }, 'json')
+        .fail(function () {
+            $inp.css({ 'background': '#ffebee', 'border-color': '#e53935' });
+            setTimeout(function () { $inp.css({ 'background': '', 'border-color': '' }); }, 2000);
         });
     });
 });
 </script>
-<script type="text/javascript">
-function myfun() {
-	var x = document.getElementById("product").value;
-    //alert(x);
-	if(x =='glambar')
-	{
-		document.getElementById('operator').options.length = 0;
-		var select = document.getElementById("operator");
-		//select.options[select.options.length] = new Option('--operator--', '');
-		select.options[select.options.length] = new Option('South_Africa_oxygen', 'south_africa');
-		select.options[select.options.length] = new Option('South_Africa_intarget', 'south_africa_intarget');
-		//select.options[select.options.length] = new Option('Idea_India', 'idea');
-		//select.options[select.options.length] = new Option('Vodafone_India', 'vodafone');
-		select.options[select.options.length] = new Option('Airtel_India', 'airtel_india');
-		//select.options[select.options.length] = new Option('Bsnl_India', 'bsnl_india');
-		//select.options[select.options.length] = new Option('Thailand', 'thailand_svobi');
-	}
-	else if(x =='gamebar')
-	{
-		document.getElementById('operator').options.length = 0;
-		var select = document.getElementById("operator");
-		select.options[select.options.length] = new Option('--operator--', '');
-		//select.options[select.options.length] = new Option('Vodafone_Qatar', 'Vodafone_Qatar');
-		select.options[select.options.length] = new Option('South_Africa_oxygen', 'south_africa');
-		select.options[select.options.length] = new Option('South_Africa_intarget', 'south_africa_intarget');
-		//select.options[select.options.length] = new Option('Ooredoo_Oman', 'ooredoo_oman');
-		//select.options[select.options.length] = new Option('Ooredoo_Qatar', 'ooredoo_qatar');
-		//select.options[select.options.length] = new Option('Cellcom_Malaysia', 'malaysia_cellcom');
-		//select.options[select.options.length] = new Option('Idea_India', 'idea');
-		//select.options[select.options.length] = new Option('Vodafone_India', 'vodafone');
-		select.options[select.options.length] = new Option('Airtel_India', 'airtel_india');
-		//select.options[select.options.length] = new Option('Bsnl_India', 'bsnl_india');
-		//select.options[select.options.length] = new Option('Portugal', 'portugal');
-		select.options[select.options.length] = new Option('Indonesia', 'indonesia');
-		/*select.options[select.options.length] = new Option('Airtel', 'Airtel');
-		select.options[select.options.length] = new Option('Azharbeizan', 'Azharbeizan');
-		select.options[select.options.length] = new Option('etisalat', 'etisalat');
-		select.options[select.options.length] = new Option('ooredoo_qatar', 'ooredoo');
-		select.options[select.options.length] = new Option('srilanka', 'srilanka');*/
-	}
-	
-	/*if(x=="glambar")
-	{
-		 //alert("hi");
-	document.getElementById('azharbeizan').style.visibility = 'hidden';
-	}else
-	{
-		document.getElementById('azharbeizan').style.visibility = 'visible';
-	}*/
-}
-</script>		
-<script>
- function getdata(startdate,enddate,db,dblog,advertiser,parameter){
-
-  
-  if (window.XMLHttpRequest) {
-            // code for IE7+, Firefox, Chrome, Opera, Safari
-            xmlhttp = new XMLHttpRequest();
-        } else {
-            // code for IE6, IE5
-            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-        }
-        xmlhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-                document.getElementById("advertiser").innerHTML = this.responseText;
-            }
-        };
-        xmlhttp.open("GET","mehul_ajax/mehul_ajax.php?startdate="+startdate+"&enddate="+enddate+"&db="+db+"&dblog="+dblog+"&advertiser="+advertiser+"&parameter="+parameter,true);
-        xmlhttp.send();
-    }
- 
- </script>   
- 
-<script type="text/javascript">
-
-function stop_callback(currencytoinr,advertiserid)
-{
-		//alert("ajax/make2.php?currencytoinr="+currencytoinr+"&id="+advertiserid);
-		$.ajax({
-            type: "GET",
-            url: "ajax/make2.php?currencytoinr="+currencytoinr+"&id="+advertiserid       
-			});			
-			
-			
-}
-
-</script> 	
-

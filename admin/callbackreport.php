@@ -1,563 +1,209 @@
 <?php
-
 ini_set('max_execution_time', 6000);
-
-//include("includes/check_session.php");
-//include("includes/connection.php");
 date_default_timezone_set("Asia/Calcutta");
 error_reporting(0);
-$con=new mysqli("10.34.240.214","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
-$con3=new mysqli("10.34.240.214","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
 
-$report='gamebardb_vodafone_qatar_report';
+$pageTitle = 'Callback Report';
+$pageIcon  = 'fa-phone';
 
-
-
-//$con1=new mysqli("10.125.0.50","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster1
-
-$con1=$con;
-$start_date='';
-$end_date='';
-$operator='';
-$product='';
-$count=0;
-$cc=0;
-$date1=date('Y-m-d');
-
-
-
-if(isset($_POST['submit']))
-{
-	//print_r($_POST);exit;
-
-$count=1;
-$operator=$_POST['operator'];
-$product=$_POST['product'];
- $advertiserid=$_POST['advertiserid']; 
-//print_r($_POST);
-//exit;
-if($start_date == $end_date)
-	{
-		$start_date=date('Y-m-d 00:00:00',strtotime($_POST['start_date']));
-		$end_date=date('Y-m-d 23:59:59',strtotime($_POST['end_date']));
-		$start_date1=date('Y-m-d',strtotime($_POST['start_date']));
-		$end_date1=date('Y-m-d',strtotime($_POST['end_date']));
-	}	
-	else
-	{
-		$start_date=date('Y-m-d 00:00:00',strtotime($_POST['start_date']));
-		$end_date=date('Y-m-d 00:00:00',strtotime($_POST['end_date']));
-		$start_date1=date('Y-m-d',strtotime($_POST['start_date']));
-		$end_date1=date('Y-m-d',strtotime($_POST['end_date']));
-	}
-
-	$sql_ad="select * from gamebardb_vodafone_qatar_report.mainreportquery where product='".$product."' order by operator asc";
-	$res_op=mysqli_query($con,$sql_ad);
-	
-	
-	
-	
-	
-	$count=1;
-	$operator=$_POST['operator'];
-	$product=$_POST['product'];
-	$date1=date('Y-m-d');
-	
-	$hours=$_POST['hours'];
-	//$display=$_POST['display']; 
-	
-	$b=$c=0;
-	if($start_date == $end_date)
-	{
-		$start_date=date('Y-m-d 00:00:00',strtotime($_POST['start_date']));
-		$end_date=date('Y-m-d 23:59:59',strtotime($_POST['end_date']));
-		$start_date1=date('Y-m-d',strtotime($_POST['start_date']));
-		$end_date1=date('Y-m-d',strtotime($_POST['end_date']));
-	}	
-	else
-	{
-		$start_date=date('Y-m-d 00:00:00',strtotime($_POST['start_date']));
-		$end_date=date('Y-m-d 00:00:00',strtotime($_POST['end_date']));
-		$start_date1=date('Y-m-d',strtotime($_POST['start_date']));
-		$end_date1=date('Y-m-d',strtotime($_POST['end_date']));
-	}
-
-
-	$compare="2020-04-13";
-	if(strtotime($start_date1) < strtotime($compare))
-	{
-		
-		$start_date1='2020-04-13  00:00:00';
-		$start_date='2020-04-13 00:00:00';
-	}
-	$backdate=date('Y-m-d',strtotime('-1 days'));
-	
-	if($enddate1>$date1)
-	{
-		$end_date1=$backdate." 23:59:59";
-		$end_date=$backdate." 00:00:00";
-		
-	}
-	
-		//echo time($startdate1);
-		//echo Time('2020-04-13');
-	if($operator=='all')
-	{
-		
-		  $sql2="select mainreport.product,mainreport.operator,advertiser,advname,sum(cbsent)sum,operatorcost_usd,sum(pcsent)pcsent1 from ".$report.".mainreport left join ".$report.".operatorcost on mainreport.operator=operatorcost.operator where date >='".$start_date1."' and date<='".$end_date1."' and mainreport.product='".$product."'  and advertiser>0 and cbsent>0  and operatorcost.product='".$product."' group by  mainreport.product,mainreport.operator,advertiser,advname,operatorcost_usd order by Product asc,operator asc;";
-	}
-	else
-	{
-		  $sql2="select mainreport.product,mainreport.operator,advertiser,advname,sum(cbsent)sum,operatorcost_usd,sum(pcsent)pcsent1 from ".$report.".mainreport left join ".$report.".operatorcost on mainreport.operator=operatorcost.operator where date >='".$start_date1."' and date<='".$end_date1."' and mainreport.product='".$product."'  and mainreport.operator='".$operator."' and advertiser>0 and cbsent>0 and operatorcost.product='".$product."' group by  mainreport.product,mainreport.operator,advertiser,advname,operatorcost_usd order by Product asc,operator asc;";
-	
-	 // $sql2="select date,advertiser,advname,sum(cbsent)sum,operatorcost_usd from ".$report.".mainreport left join ".$report.".operatorcost on mainreport.operator=operatorcost.operator where date >='".$start_date1."' and date<='".$end_date1."'  and mainreport.operator='".$operator."' and mainreport.product='".$product."'  and advertiser>0 and cbsent>0 group by advertiser order by date;";
-	}
-//echo $sql2;exit;
-				
-				$res2=mysqli_query($con1,$sql2);
-	
-
-	
-	
-	
-	
-	
-			
-	
-	$start_date2=$_POST['start_date'];
-$end_date2=$_POST['end_date'];
-
-}
+include("includes/check_session.php");
 ?>
+<?php include("includes/header.php"); ?>
+<?php include("includes/sidebar.php"); ?>
+<div class="hp-main">
+<?php include("includes/top_navigation.php"); ?>
+<div class="hp-content">
 
-		<?php include("includes/header.php"); ?>
-		<?php include("includes/sidebar.php"); ?>
-		<?php include("includes/top_navigation.php"); ?>
-            
-			
-
-        <!-- page content -->
-        <div class="right_col" role="main" >
-          <div class="footer_down">
-
-            
-            
-
+<div class="hp-card">
+    <div class="hp-card-header">
+        <h4><i class="fa fa-phone"></i> Callback Report</h4>
+    </div>
+    <div class="hp-card-body">
+        <form id="cbr-form">
             <div class="row">
-              <div class="col-md-12 col-xs-12">
-                <div class="x_panel">
-                  <div class="x_title">
-                    <h2>Search URLs <small></small></h2>
-                    <ul class="nav navbar-right panel_toolbox">
-                      <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
-                      </li>
-                      <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
-                        <ul class="dropdown-menu" role="menu">
-                          <li><a href="#">Settings 1</a>
-                          </li>
-                          <li><a href="#">Settings 2</a>
-                          </li>
-                        </ul>
-                      </li>
-                      <li><a class="close-link"><i class="fa fa-close"></i></a>
-                      </li>
-                    </ul>
-                    <div class="clearfix"></div>
-                  </div>
-                  <div class="x_content">
-                    <br />
-                    <form class="form-horizontal form-label-left input_mask" method="post">
-					
-						<div class="col-md-2 col-sm-2 col-xs-12 form-group has-feedback"> Product
-						<select name="product" class="form-control" id="product" >
-							<option>Product</option>
-							<option value="gamebar" <?php if($product=='gamebar'){$selected='selected';}else{$selected='';} echo $selected; ?>>Gamebar</option>
-							<option value="glambar" <?php if($product=='glambar'){$selected='selected';}else{$selected='';} echo $selected; ?> >Glambar</option>
-								<option value="11Players" <?php if($product=='11Players'){$selected='selected';}else{$selected='';} echo $selected; ?> >11Players</option>
-							<option value="Contest" <?php if($product=='Contest'){$selected='selected';}else{$selected='';} echo $selected; ?> >Contest</option>
-							
-						</select>
-						</div>
-						
-						<?php
-						if($count==0)
-						{
-						?>
-							<div class="col-md-2 col-sm-2 col-xs-12 form-group has-feedback first"> operator
-							<span class="response1">
-							</span>
-							
-							</div>
-						<?php
-						}
-						else
-						{
-							//echo $operator;exit;
-						?>
-							
-							<div class="col-md-2 col-sm-2 col-xs-12 form-group has-feedback two"> operator
-								<span class="response1" id="f1">
-								</span>
-								<span id="t1">
-								<select name="operator" id="operator" class="form-control select1_single sel1" onchange="myfun1()">
-								<option value="all">All</option>
-									<?php
-									
-									
-									while($row_op=mysqli_fetch_array($res_op))
-									{
-										if($row_op['operator']==$operator)
-										{
-											$selected="selected";
-										}
-										else
-										{
-											$selected="";
-										}
-									?>
-									<!--<option value="<?php //echo $row_op['operator']; ?>" <?php //echo $selected; ?>><?php //echo $row_op['operator']; ?></option>-->
-									<?php
-									}
-									?>
-									
-								</select>
-								</span>
-							</div>
-						<?php
-						}
-						?>
-						
-						<div class="col-md-2 col-sm-2 col-xs-12 form-group has-feedback"> Start Date
-						<input class="date-picker form-control col-md-7 col-xs-12 birthday" name="start_date" value="<?php if($start_date!=''){ echo date('d-m-Y',strtotime($start_date2)); } else { echo date('d-m-Y');} ?>"  type="text">
-						</div>
 
-						<div class="col-md-2 col-sm-2 col-xs-12 form-group has-feedback"> End Date
-						<input class="date-picker form-control col-md-7 col-xs-12 birthday" name="end_date" value="<?php if($end_date!=''){echo date('d-m-Y',strtotime($end_date2));}else{ echo date('d-m-Y');} ?>" type="text">
-						</div>
-						
-						
-						
-						
-						
-						
-
-						<br><br><br><br>
-						<div class="col-md-9 col-sm-9 col-xs-12">
-						 
-						  <button type="submit" name="submit" class="btn btn-success">Submit</button>
-						</div>
-                      
-
-                    </form>
-                  </div>
+                <div class="col-md-2 col-sm-4 col-xs-12">
+                    <div class="form-group">
+                        <label class="hp-filter-label">Product</label>
+                        <select name="product" id="cbr-product" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="gamebar">Gamebar</option>
+                            <option value="glambar">Glambar</option>
+                            <option value="11Players">11Players</option>
+                            <option value="Contest">Contest</option>
+                        </select>
+                    </div>
                 </div>
-				
-              
-              </div>
+
+                <div class="col-md-2 col-sm-4 col-xs-12">
+                    <div class="form-group">
+                        <label class="hp-filter-label">Operator</label>
+                        <div id="cbr-operator-wrap">
+                            <select name="operator" id="cbr-operator" class="form-control" disabled>
+                                <option value="">-- Select Product First --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-2 col-sm-4 col-xs-12">
+                    <div class="form-group">
+                        <label class="hp-filter-label">Start Date</label>
+                        <input type="text" name="start_date" id="cbr-start" class="form-control birthday"
+                               value="<?php echo date('d-m-Y'); ?>">
+                    </div>
+                </div>
+
+                <div class="col-md-2 col-sm-4 col-xs-12">
+                    <div class="form-group">
+                        <label class="hp-filter-label">End Date</label>
+                        <input type="text" name="end_date" id="cbr-end" class="form-control birthday"
+                               value="<?php echo date('d-m-Y'); ?>">
+                    </div>
+                </div>
+
+                <div class="col-md-2 col-sm-4 col-xs-12">
+                    <div class="form-group">
+                        <label class="hp-filter-label">&nbsp;</label>
+                        <button type="submit" id="cbr-submit-btn" class="btn btn-primary btn-block">
+                            <i class="fa fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+
             </div>
-			
-			<div class="row">
+        </form>
+    </div>
+</div>
 
-				<div class="col-md-12 col-sm-12 col-xs-12">
-					<div class="x_panel">
-						<div class="x_title">
-							<h2>Output Records <small></small></h2>
-							<ul class="nav navbar-right panel_toolbox">
-							  <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
-							  </li>
-							  <li class="dropdown">
-								<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
-								<ul class="dropdown-menu" role="menu">
-								  <li><a href="#">Settings 1</a>
-								  </li>
-								  <li><a href="#">Settings 2</a>
-								  </li>
-								</ul>
-							  </li>
-							  <li><a class="close-link"><i class="fa fa-close"></i></a>
-							  </li>
-							</ul>
-							<div class="clearfix"></div>
-						</div>
-						
-			<?php 
-			//echo $operator;
-			
-				$swq="select operator_cost from `gamebardb_vodafone_qatar_report`.`operatorcost` where operator='".$operator."'";
-				$ser=mysqli_query($con3,$swq) or die(mysqli_error());
-				while($wor=mysqli_fetch_array($ser))
-				{
-					$cost=$wor['operator_cost'];
-				}
-				
-				$swq1="select revenueshare from `gamebardb_vodafone_qatar_report`.`svmobi_revenueshare` where operator='".$operator."'";
-				$ser1=mysqli_query($con3,$swq1) or die(mysqli_error());
-				while($wor1=mysqli_fetch_array($ser1))
-				{
-					 $revenue=$wor1['revenueshare'];
-				}
-				
-				
-				
-				
-				
-				
-				
-				
-				
-			if($count==1)
-			{
-				$k=$l=0;
-				//echo $cc;exit;
-			?>	
-			
-					  <div class="x_content"  style="overflow:auto;">
-						
-						<table id="datatable-buttons" class="table table-striped table-bordered">
-							<thead>
-								<tr>
-									<td><strong>Product</strong></td>
-										<td><strong>Operator</strong></td>
-										<td><strong>Adertiser</strong></td>
-										<td><strong>Total CallBackSent</strong></td>
-										<td><strong>Pin-Confirmed callbacks</strong></td>
-										<td><strong>Callback Cost</strong></td>
-										<td><strong>Total Cost in USD</strong></td>
-									
-									
-									
-								</tr>
-							</thead>
+<div id="cbr-results">
+    <div style="padding:60px;text-align:center;color:#a0aec0;">
+        <i class="fa fa-phone" style="font-size:40px;display:block;margin-bottom:12px;color:#e2e8f0;"></i>
+        Select a product and operator, then click Search.
+    </div>
+</div>
 
+</div><!-- /.hp-content -->
+</div><!-- /.hp-main -->
 
-							<tbody>
-									
-																
-									<?php
-									
-									while($row2=mysqli_fetch_array($res2))
-									{	
-										//print_r($row2);exit;
-										?>
-											<tr>
-											<td><?php echo $row2['product'];?></td>
-											<td><?php echo $row2['operator'];?></td>
-											<td><?php echo $row2['advname'];?></td>
-											<td><?php echo $row2['sum'];?></td>
-											<td><?php echo $row2['pcsent1'];?></td>
-											<td><?php echo $row2['operatorcost_usd'];?></td>
-											<td><?php echo $row2['sum'] * $row2['operatorcost_usd']    ;?></td>
-											</tr>
-									<?php
-									}
-									
-									?>							
-							</tbody>
-							
-							
-								
-								
-						</table>
-					  </div>
-				<!--<div id="advertiser"></div>-->
-			<?php
-			}
-							
-							
-								
-			
-			
-			
-			?>
-					</div>
-                </div>
-			</div>
-			
-		</div>
-        <!-- /page content -->
-		
-       <?php
-	   include("includes/footer.php");
-		?>
-		
-<script type="text/javascript">
- 
-</script>		
-		
-		
-		
-		
-		
-<script type="text/javascript">
- $(document).ready(function(){
+<?php include("includes/footer.php"); ?>
 
-   $("#product").change(function(){
-		
-		var check1=$("#check1").val();
-		if(check1 == 0)
-		{
-			
-		}
-		else	
-		{
-			$(".sel1").val('');
-			$("#t1").hide();
-			$("#f1").show();
-						
-		}
-       
-		var product = $("#product").val();
-        $.ajax({
-            type: "GET",
-            url: "ajax/findoperatorcallbackreport.php?product="+product         
-			
-        }).done(function(data){
-			
-			
-            $(".response1").html(data);
-			 
+<script>
+$(document).ready(function () {
+
+    // ── Date pickers ──────────────────────────────────────────────────────────
+    $('#cbr-start, #cbr-end').daterangepicker({
+        singleDatePicker : true,
+        autoApply        : true,
+        locale           : { format: 'DD-MM-YYYY' }
+    });
+
+    // ── Product change → load operators ──────────────────────────────────────
+    $('#cbr-product').on('change', function () {
+        var product = $(this).val();
+        if (!product) {
+            $('#cbr-operator-wrap').html(
+                '<select name="operator" id="cbr-operator" class="form-control" disabled>' +
+                '<option value="">-- Select Product First --</option></select>'
+            );
+            $('#cbr-results').html(
+                '<div style="padding:60px;text-align:center;color:#a0aec0;">' +
+                '<i class="fa fa-phone" style="font-size:40px;display:block;margin-bottom:12px;color:#e2e8f0;"></i>' +
+                'Select a product and operator, then click Search.</div>'
+            );
+            return;
+        }
+        $.get('ajax/handler.php', { action: 'find_operators', product: product }, function (html) {
+            $('#cbr-operator-wrap').html(html);
         });
     });
+
+    // ── Form submit → load report ─────────────────────────────────────────────
+    $('#cbr-form').on('submit', function (e) {
+        e.preventDefault();
+
+        var product  = $('#cbr-product').val();
+        var operator = $('#cbr-operator-wrap select').val();
+
+        if (!product || !operator) {
+            alert('Please select both Product and Operator.');
+            return;
+        }
+
+        var $btn = $('#cbr-submit-btn');
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
+        $('#cbr-results').html(
+            '<div style="padding:60px;text-align:center">' +
+            '<i class="fa fa-refresh" style="font-size:34px;color:#667eea;display:inline-block;animation:hp-spin 0.9s linear infinite"></i>' +
+            '<p style="color:#a0aec0;margin-top:14px;font-size:14px">Loading report...</p></div>'
+        );
+
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#cbr-table')) {
+            $('#cbr-table').DataTable().destroy();
+        }
+
+        $.post('ajax/handler.php', {
+            action    : 'callback_report_load',
+            product   : product,
+            operator  : operator,
+            start_date: $('#cbr-start').val(),
+            end_date  : $('#cbr-end').val()
+        })
+        .done(function (html) {
+            $('#cbr-results').html(html);
+
+            if ($('#cbr-table').length) {
+                $('#cbr-table').DataTable({
+                    dom      : 'Bfrtip',
+                    buttons  : [
+                        { extend: 'copy',  className: 'btn-sm' },
+                        { extend: 'csv',   className: 'btn-sm' },
+                        { extend: 'excel', className: 'btn-sm' },
+                        {
+                            extend      : 'pdfHtml5',
+                            className   : 'btn-sm',
+                            title       : 'Callback Report | SVMobi',
+                            orientation : 'landscape',
+                            pageSize    : 'A4',
+                            customize   : function (doc) {
+                                doc.pageMargins = [20, 35, 20, 20];
+                                doc.defaultStyle.fontSize        = 9;
+                                doc.defaultStyle.alignment       = 'center';
+                                doc.styles.tableHeader.fontSize  = 9;
+                                doc.styles.tableHeader.alignment = 'center';
+                                doc.styles.tableBodyOdd.fontSize  = 9;
+                                doc.styles.tableBodyEven.fontSize = 9;
+                                doc.content.forEach(function (node) {
+                                    if (node.table) {
+                                        var cols = node.table.body[0].length;
+                                        node.table.widths = Array(cols).fill('*');
+                                        node.table.body.forEach(function (row) {
+                                            row.forEach(function (cell) {
+                                                if (typeof cell === 'object') cell.alignment = 'center';
+                                            });
+                                        });
+                                    }
+                                });
+                            }
+                        },
+                        { extend: 'print', className: 'btn-sm' }
+                    ],
+                    order      : [[0, 'asc'], [1, 'asc']],
+                    pageLength : 25
+                });
+            }
+        })
+        .fail(function () {
+            $('#cbr-results').html(
+                '<div style="padding:40px;text-align:center;color:#e53e3e">' +
+                '<i class="fa fa-exclamation-circle" style="font-size:32px;display:block;margin-bottom:10px"></i>' +
+                'Request failed. Please try again.</div>'
+            );
+        })
+        .always(function () {
+            $btn.prop('disabled', false).html('<i class="fa fa-search"></i> Search');
+        });
+    });
+
 });
 </script>
-<script type="text/javascript">
-function myfun1() {
-var check1=$("#check1").val();
-		if(check1 == 0)
-		{
-			
-		}
-		else	
-		{
-			$(".sel").val('');
-			$("#t").hide();
-			$("#f").show();
-						
-		}
-        var operator = $("#operator").val();
-		var product = $("#product").val();
-        $.ajax({
-            type: "GET",
-          //  url: "ajax/advertisermainreport.php?operator="+operator+"&product="+product         
-			
-        }).done(function(data){
-            $(".response").html(data);
-			 
-        });
-
-}	
-</script>		
-
-
-
-
-<script type="text/javascript">
-function myfun() {
-	var x = document.getElementById("product").value;
-    //alert(x);
-	if(x =='glambar')
-	{
-		document.getElementById('operator').options.length = 0;
-		var select = document.getElementById("operator");
-		select.options[select.options.length] = new Option('--operator--', '');
-		select.options[select.options.length] = new Option('Thailand', 'thailand_svobi');
-		select.options[select.options.length] = new Option('New_Thailand', 'new_thailand');
-		select.options[select.options.length] = new Option('Spain', 'spain');
-		select.options[select.options.length] = new Option('Kenya_Oxygen', 'kenya_oxygen');
-		select.options[select.options.length] = new Option('Poland', 'poland');
-		select.options[select.options.length] = new Option('Vodacom_Wfh', 'vodacom_wfh');
-		select.options[select.options.length] = new Option('Vodacom_Fg', 'vodacom_fg');
-		select.options[select.options.length] = new Option('Vodacom_Bt', 'vodacom_bt');
-		select.options[select.options.length] = new Option('Cosmote_Greece', 'Cosmote_Greece');
-		select.options[select.options.length] = new Option('Vodafone_Greece', 'Vodafone_Greece');
-		select.options[select.options.length] = new Option('Wind_Greece', 'Wind_Greece');
-		select.options[select.options.length] = new Option('All_Greece D', 'all_greece');
-	}
-	else if(x =='gamebar')
-	{
-		document.getElementById('operator').options.length = 0;
-		var select = document.getElementById("operator");
-		select.options[select.options.length] = new Option('--operator--', '');
-		select.options[select.options.length] = new Option('Vodafone_Qatar', 'Vodafone_Qatar');
-		
-		select.options[select.options.length] = new Option('Ooredoo_Oman', 'ooredoo_oman');
-		select.options[select.options.length] = new Option('Qatar_Gamestation', 'qatar_gamestation');
-		select.options[select.options.length] = new Option('Ooredoo_Qatar', 'ooredoo_qatar');
-		select.options[select.options.length] = new Option('Qu_Qatar', 'qu_qatar');
-		select.options[select.options.length] = new Option('Cellcom_Malaysia', 'malaysia_cellcom');
-		
-		
-		//select.options[select.options.length] = new Option('Airtel_India', 'airtel_india');
-	//	select.options[select.options.length] = new Option('Bsnl_India', 'bsnl_india');
-		select.options[select.options.length] = new Option('Spain', 'spain');
-		select.options[select.options.length] = new Option('Indonesia', 'indonesia');
-		select.options[select.options.length] = new Option('Egypt', 'egypt');
-		select.options[select.options.length] = new Option('Du_Dubai', 'du_dubai');
-		select.options[select.options.length] = new Option('Kenya_Oxygen', 'kenya_oxygen');
-		
-		select.options[select.options.length] = new Option('Myanmar', 'myanmar');
-		//select.options[select.options.length] = new Option('Kazakistan', 'kazakistan');
-	
-		
-		select.options[select.options.length] = new Option('Poland', 'poland');
-		select.options[select.options.length] = new Option('Bangladesh', 'Bangladesh_Robi');
-		select.options[select.options.length] = new Option('Srilanka', 'dialog_srilanka');
-		select.options[select.options.length] = new Option('Cosmote_Greece', 'Cosmote_Greece');
-		select.options[select.options.length] = new Option('Vodafone_Greece', 'Vodafone_Greece');
-		select.options[select.options.length] = new Option('Wind_Greece', 'Wind_Greece');
-		select.options[select.options.length] = new Option('All_Greece D', 'all_greece');
-		//select.options[select.options.length] = new Option('Mts_Serbia', 'Mts_Serbia');
-		//select.options[select.options.length] = new Option('Vip_Serbia', 'Vip_Serbia');
-		select.options[select.options.length] = new Option('Du_UAE', 'du_uae');
-		select.options[select.options.length] = new Option('Etisalad_UAE', 'etisalad_uae');
-		select.options[select.options.length] = new Option('Palestine', 'palestine');
-		select.options[select.options.length] = new Option('Blazon_etisalad', 'blazon_etisalad');
-		select.options[select.options.length] = new Option('Algeria', 'algeria');
-		select.options[select.options.length] = new Option('Kuwait-Zain', 'kwzain');
-		select.options[select.options.length] = new Option('Kuwait-Viva', 'kwviva');
-		select.options[select.options.length] = new Option('Pk-Telenor', 'pk_telenor');
-		select.options[select.options.length] = new Option('U.K.', 'unitedkingdom');
-		//select.options[select.options.length] = new Option('Upstream_Thailand', 'upstream_thailand');
-		select.options[select.options.length] = new Option('NL-D', 'netherland');
-		select.options[select.options.length] = new Option('NL-N', 'netherland_netsmart');
-		select.options[select.options.length] = new Option('France', 'france');
-		select.options[select.options.length] = new Option('Bahrain', 'bahrain');
-		select.options[select.options.length] = new Option('Greece N', 'gr2');
-		select.options[select.options.length] = new Option('Norway', 'norway');
-		select.options[select.options.length] = new Option('Saudi_Mobily', 'saudi_mobily');
-		
-	}
-	
-	/*if(x=="glambar")
-	{
-		 //alert("hi");
-	document.getElementById('azharbeizan').style.visibility = 'hidden';
-	}else
-	{
-		document.getElementById('azharbeizan').style.visibility = 'visible';
-	}*/
-}
-</script>		
-<script>
- function getdata(startdate,enddate,db,dblog,advertiser,parameter){
-
-  
-  if (window.XMLHttpRequest) {
-            // code for IE7+, Firefox, Chrome, Opera, Safari
-            xmlhttp = new XMLHttpRequest();
-        } else {
-            // code for IE6, IE5
-            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-        }
-        xmlhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-                document.getElementById("advertiser").innerHTML = this.responseText;
-            }
-        };
-        xmlhttp.open("GET","mehul_ajax/mehul_ajax.php?startdate="+startdate+"&enddate="+enddate+"&db="+db+"&dblog="+dblog+"&advertiser="+advertiser+"&parameter="+parameter,true);
-        xmlhttp.send();
-    }
- 
- </script>   
- 
