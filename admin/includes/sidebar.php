@@ -98,6 +98,17 @@
     <li class="has-submenu <?php echo $otherOpen; ?>">
       <a href="#"><i class="fa fa-folder-open-o"></i> Other Reports</a>
       <ul class="hp-submenu">
+        <!-- <li class="<?php echo $currentPage === 'samedaydeactivation.php'    ? 'active' : ''; ?>">
+          <a href="samedaydeactivation.php"><i class="fa fa-file-text-o"></i> SameDay Churn</a>
+        </li>
+        <li class="<?php echo $currentPage === 'samedaydeactivation2.php'   ? 'active' : ''; ?>">
+          <a href="samedaydeactivation2.php"><i class="fa fa-file-text-o"></i> Churn Percentage Report</a>
+        </li>
+        <li class="<?php echo $currentPage === 'partner_tracking_report.php'? 'active' : ''; ?>">
+          <a href="partner_tracking_report.php"><i class="fa fa-file-text-o"></i> Adnetwork Performance</a>
+        </li>
+        <li class="<?php echo $currentPage === 'pub_report.php'             ? 'active' : ''; ?>">
+          <a href="pub_report.php"><i class="fa fa-file-text-o"></i> PubID wise Report</a> -->
         </li>
         <li class="<?php echo $currentPage === 'activationsetting.php'      ? 'active' : ''; ?>">
           <a href="activationsetting.php"><i class="fa fa-file-text-o"></i> Activation Report Setting</a>
