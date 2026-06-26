@@ -35,6 +35,7 @@ switch ($action) {
     case 'uat_add':                     action_uat_add($con);                      break;
     case 'uat_countries':               action_uat_countries($con);                break;
     case 'uat_load':                    action_uat_load($con);                     break;
+    case 'checkactivation_load':        action_checkactivation_load($con);         break;
     case 'urlmake_operators':            action_urlmake_operators($con);            break;
     case 'urlmake_advertisers':      action_urlmake_advertisers($con);      break;
     case 'urlmake_generate':         action_urlmake_generate($con);         break;
@@ -3370,6 +3371,79 @@ function action_uat_load(mysqli $con): void
             $val = htmlspecialchars($ll[$op][$field] ?? '—');
             $html .= '<td style="text-align:center;padding:6px 10px;">' . $val . '</td>';
         }
+        $html .= '</tr>';
+    }
+
+    $html .= '</tbody></table></div></div>';
+    echo $html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTION: Check Crons — activation & renewal for a date where advertiser = 0
+// Called by: checkactivation.php  →  POST ajax/handler.php?action=checkactivation_load
+// POST params: date (d-m-Y)
+// ═══════════════════════════════════════════════════════════════════════════════
+function action_checkactivation_load(mysqli $con): void
+{
+    $report   = 'gamebardb_vodafone_qatar_report';
+    $date_raw = trim($_POST['date'] ?? date('d-m-Y'));
+
+    $date_dt = date('Y-m-d 00:00:00', strtotime($date_raw));
+    $date_lbl = date('d-m-Y', strtotime($date_raw));
+
+    $stmt = $con->prepare(
+        "SELECT Date, country, product, operator, actcount, renewcount
+         FROM {$report}.mainreport
+         WHERE date = ? AND advertiser = '0'
+         ORDER BY actcount ASC, renewcount ASC"
+    );
+    $stmt->bind_param('s', $date_dt);
+    $stmt->execute();
+    $res  = $stmt->get_result();
+    $rows = [];
+    while ($r = $res->fetch_assoc()) $rows[] = $r;
+    $stmt->close();
+
+    if (empty($rows)) {
+        echo '<div class="hp-card" style="margin-top:16px"><div class="hp-card-body" style="padding:60px;text-align:center">
+                <i class="fa fa-inbox" style="font-size:52px;color:#e2e8f0;display:block;margin-bottom:18px"></i>
+                <p style="color:#a0aec0;font-size:15px;margin:0 0 6px;font-weight:600">No Data Available</p>
+                <p style="color:#cbd5e0;font-size:13px;margin:0">No cron records found for <strong>' . htmlspecialchars($date_lbl) . '</strong>.</p>
+              </div></div>';
+        return;
+    }
+
+    $zero_act = 0;
+    $zero_ren = 0;
+    foreach ($rows as $r) {
+        if ((int)$r['actcount']   === 0) $zero_act++;
+        if ((int)$r['renewcount'] === 0) $zero_ren++;
+    }
+
+    $html  = '<div class="hp-card" style="margin-top:16px">';
+    $html .= '<div class="hp-card-header"><h4><i class="fa fa-check-circle-o"></i> Check Crons — ' . htmlspecialchars($date_lbl);
+    $html .= '<small style="font-size:12px;font-weight:400;color:rgba(255,255,255,.7);margin-left:10px;">';
+    $html .= count($rows) . ' records';
+    if ($zero_act > 0) $html .= ' &middot; <span style="color:#ffcdd2">' . $zero_act . ' zero-activation</span>';
+    if ($zero_ren > 0) $html .= ' &middot; <span style="color:#ffcdd2">' . $zero_ren . ' zero-renewal</span>';
+    $html .= '</small></h4></div>';
+    $html .= '<div class="hp-card-body" style="overflow-x:auto;">';
+    $html .= '<table id="chkact-table" class="table table-striped table-bordered" style="width:100%">';
+    $html .= '<thead><tr>';
+    $html .= '<th>Date</th><th>Country</th><th>Product</th><th>Operator</th>';
+    $html .= '<th>Activation</th><th>Renewal</th>';
+    $html .= '</tr></thead><tbody>';
+
+    foreach ($rows as $r) {
+        $act_style = ((int)$r['actcount']   === 0) ? ' style="color:#fff;font-weight:700;background:#ff9999;"' : '';
+        $ren_style = ((int)$r['renewcount'] === 0) ? ' style="color:#fff;font-weight:700;background:#ff9999;"' : '';
+        $html .= '<tr>';
+        $html .= '<td>' . htmlspecialchars(date('d-m-Y', strtotime($r['Date'])))  . '</td>';
+        $html .= '<td>' . htmlspecialchars($r['country'])  . '</td>';
+        $html .= '<td>' . htmlspecialchars($r['product'])  . '</td>';
+        $html .= '<td>' . htmlspecialchars($r['operator']) . '</td>';
+        $html .= '<td style="text-align:center"' . $act_style . '>' . (int)$r['actcount']   . '</td>';
+        $html .= '<td style="text-align:center"' . $ren_style . '>' . (int)$r['renewcount'] . '</td>';
         $html .= '</tr>';
     }
 
