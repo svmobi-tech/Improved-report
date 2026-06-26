@@ -739,19 +739,19 @@ function action_perform_data(mysqli $con): void
     <div class="hp-card-body" style="padding:0; overflow-x:auto;">
         <table id="perform-table" class="table table-striped table-bordered" style="font-size:12.5px;">
             <thead>
-                <tr>
-                    <th>Date</th>
+                <tr style="text-align:center;">
+                    <th style="text-align:center;">Date</th>
                     <?php foreach ($advname as $adv): ?>
-                    <th><?php echo htmlspecialchars($adv); ?></th>
+                    <th style="text-align:center;"><?php echo htmlspecialchars($adv); ?></th>
                     <?php endforeach; ?>
-                    <th><strong>Total</strong></th>
+                    <th style="text-align:center;"><strong>Total</strong></th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($dt as $date => $vals):
                     $sum = 0;
                 ?>
-                <tr>
+                <tr style="text-align:center;">
                     <td><?php echo htmlspecialchars($date); ?></td>
                     <?php foreach ($advname as $adv):
                         if (array_key_exists($adv, $vals)) {
@@ -1017,12 +1017,12 @@ function action_last_activity_data(mysqli $con): void
         <table id="activity-table" class="table table-striped table-bordered">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Product</th>
-                    <th>Operator</th>
-                    <th>Activation</th>
-                    <th>Renewal</th>
-                    <th>Callback Sent</th>
+                    <th class="text-center">ID</th>
+                    <th class="text-center">Product</th>
+                    <th class="text-center">Operator</th>
+                    <th class="text-center">Activation</th>
+                    <th class="text-center">Renewal</th>
+                    <th class="text-center">Callback Sent</th>
                 </tr>
             </thead>
             <tbody>
@@ -3519,20 +3519,20 @@ function action_checkactivation_load(mysqli $con): void
     $html .= '<div class="hp-card-body" style="overflow-x:auto;">';
     $html .= '<table id="chkact-table" class="table table-striped table-bordered" style="width:100%">';
     $html .= '<thead><tr>';
-    $html .= '<th>Date</th><th>Country</th><th>Product</th><th>Operator</th>';
-    $html .= '<th>Activation</th><th>Renewal</th>';
+    $html .= '<th class="text-center">Date</th><th class="text-center">Country</th><th class="text-center">Product</th><th class="text-center">Operator</th>';
+    $html .= '<th class="text-center">Activation</th><th class="text-center">Renewal</th>';
     $html .= '</tr></thead><tbody>';
 
     foreach ($rows as $r) {
         $act_style = ((int)$r['actcount']   === 0) ? ' style="color:#fff;font-weight:700;background:#ff9999;"' : '';
         $ren_style = ((int)$r['renewcount'] === 0) ? ' style="color:#fff;font-weight:700;background:#ff9999;"' : '';
         $html .= '<tr>';
-        $html .= '<td>' . htmlspecialchars(date('d-m-Y', strtotime($r['Date'])))  . '</td>';
-        $html .= '<td>' . htmlspecialchars($r['country'])  . '</td>';
-        $html .= '<td>' . htmlspecialchars($r['product'])  . '</td>';
-        $html .= '<td>' . htmlspecialchars($r['operator']) . '</td>';
-        $html .= '<td style="text-align:center"' . $act_style . '>' . (int)$r['actcount']   . '</td>';
-        $html .= '<td style="text-align:center"' . $ren_style . '>' . (int)$r['renewcount'] . '</td>';
+        $html .= '<td class="text-center">' . htmlspecialchars(date('d-m-Y', strtotime($r['Date'])))  . '</td>';
+        $html .= '<td class="text-center">' . htmlspecialchars($r['country'])  . '</td>';
+        $html .= '<td class="text-center">' . htmlspecialchars($r['product'])  . '</td>';
+        $html .= '<td class="text-center">' . htmlspecialchars($r['operator']) . '</td>';
+        $html .= '<td class="text-center"' . $act_style . '>' . (int)$r['actcount']   . '</td>';
+        $html .= '<td class="text-center"' . $ren_style . '>' . (int)$r['renewcount'] . '</td>';
         $html .= '</tr>';
     }
 
