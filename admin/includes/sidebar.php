@@ -56,16 +56,16 @@
       <a href="#"><i class="fa fa-trophy"></i> Contest</a>
       <ul class="hp-submenu">
         <li class="<?php echo $currentPage === 'contest.php'          ? 'active' : ''; ?>">
-          <a href="contest.php"><i class="fa fa-file-text-o"></i> Leaderboard</a>
+          <a href="contest.php"><i class="fa fa-trophy"></i> Leaderboard</a>
         </li>
         <li class="<?php echo $currentPage === 'contest_charging.php' ? 'active' : ''; ?>">
-          <a href="contest_charging.php"><i class="fa fa-file-text-o"></i> Charging Report</a>
+          <a href="contest_charging.php"><i class="fa fa-credit-card"></i> Charging Report</a>
         </li>
         <li class="<?php echo $currentPage === 'promotion.php'        ? 'active' : ''; ?>">
-          <a href="promotion.php"><i class="fa fa-file-text-o"></i> Promotional Activity</a>
+          <a href="promotion.php"><i class="fa fa-bullhorn"></i> Promotional Activity</a>
         </li>
         <li class="<?php echo $currentPage === 'engagement.php'       ? 'active' : ''; ?>">
-          <a href="engagement.php"><i class="fa fa-file-text-o"></i> Engagement Activity</a>
+          <a href="engagement.php"><i class="fa fa-users"></i> Engagement Activity</a>
         </li>
       </ul>
     </li>
@@ -77,10 +77,10 @@
       <a href="#"><i class="fa fa-plug"></i> API</a>
       <ul class="hp-submenu">
         <li class="<?php echo $currentPage === 'api.php'       ? 'active' : ''; ?>">
-          <a href="api.php"><i class="fa fa-file-text-o"></i> API Report</a>
+          <a href="api.php"><i class="fa fa-code"></i> API Report</a>
         </li>
         <li class="<?php echo $currentPage === 'apicharge.php' ? 'active' : ''; ?>">
-          <a href="apicharge.php"><i class="fa fa-file-text-o"></i> API Charging %</a>
+          <a href="apicharge.php"><i class="fa fa-percent"></i> API Charging %</a>
         </li>
       </ul>
     </li>

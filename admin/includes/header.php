@@ -39,10 +39,21 @@
       position: fixed; top: 0; left: 0;
       width: 240px; height: 100vh;
       background: #1a1f3c;
-      overflow-y: auto; z-index: 1050;
+      overflow-y: auto; overflow-x: hidden; z-index: 1050;
       display: flex; flex-direction: column;
       transition: transform .3s ease;
       box-shadow: 2px 0 12px rgba(0,0,0,.18);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(102,126,234,.4) transparent;
+    }
+    .hp-sidebar::-webkit-scrollbar { width: 4px; }
+    .hp-sidebar::-webkit-scrollbar-track { background: transparent; }
+    .hp-sidebar::-webkit-scrollbar-thumb {
+      background: rgba(102,126,234,.45);
+      border-radius: 4px;
+    }
+    .hp-sidebar::-webkit-scrollbar-thumb:hover {
+      background: rgba(102,126,234,.75);
     }
     .hp-main { margin-left: 240px; min-height: 100vh; display: flex; flex-direction: column; }
 
