@@ -2,8 +2,8 @@
 
 date_default_timezone_set("Asia/Calcutta");
 //error_reporting(0);
-$con=new mysqli("10.34.240.214","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
-$con3=new mysqli("10.34.240.214","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
+$con=new mysqli("10.34.240.3","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
+$con3=new mysqli("10.34.240.3","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
 
 
 //$conn=mysqli_connect('10.34.240.3','webserveruser','K&dN&r4a8N@du0');
@@ -20,7 +20,6 @@ $month1=$month;
 
 
 $start_date=$year."-".$month."-01 00:00:00";
-$start_date1=$year."-".$month."-01";
 $enddate=date("Y-m-t", strtotime($start_date));
 $end_date=$enddate." 23:59:59";
 $eday=date("t", strtotime($enddate));
@@ -43,10 +42,7 @@ $eday=date("t", strtotime($enddate));
 $laststartdate=date("Y-m-d",strtotime($start_date." -1 months"));
 $lastenddate=date("Y-m-d",strtotime($start_date." -1 days"));
 
-  
-	
-	
-	$sql="SELECT 
+ echo  $sql="SELECT 
     e.country,
     actcount,
     actamount * toinr actamount,
@@ -54,11 +50,9 @@ $lastenddate=date("Y-m-d",strtotime($start_date." -1 days"));
     renewamount * toinr renewamount,
     totalcount,
     totalamount * toinr totalamount,
-	cbsent,
     digiinvest * toinr digiinvest,
     revenueshare * toinr revenueshare,
-    g.ptotalamount lastmonthrevenue,
-	fixcost
+    g.ptotalamount lastmonthrevenue
 FROM
     (SELECT 
         country,
@@ -103,9 +97,9 @@ FROM
         gamebardb_vodafone_qatar_report.`mainreport`
     WHERE
         `advertiser` = '0'
-            AND `Date` >= '".$start_date1."'
+            AND `Date` >= '".$start_date."'
             AND Date <= '".$end_date."'
-             AND operator != 'ZA_Vodacom_BT'
+            AND operator != 'ZA_Vodacom_BT'
             AND operator != 'ZA_Vodacom_FG'
             AND operator != 'ZA_Vodacom'
             AND operator != 'ZA_Vodacom_WFH'
@@ -120,12 +114,6 @@ FROM
             AND operator != 'KSA_Daily_Mobily'
             AND operator != 'KSA_Daily_STC'
             AND operator != 'KSA_Daily_zain'
-			AND operator != 'KSA_GamePub_Weekly_Mobily'
-            AND operator != 'KSA_GamePub_Weekly_STC'
-			AND operator != 'KSA_Mobily_Weekly_Gamestation'
-            AND operator != 'KSA_Zain_Weekly_Gamestation'
-            AND operator != 'KSA_Stc_Weekly_Gamestation'
-           
     GROUP BY operator,product,country) a
     LEFT JOIN (SELECT 
         operator, operator_cost
@@ -152,13 +140,7 @@ FROM
         date >= '".$laststartdate."'
             AND date <= '".$lastenddate."') g ON g.country = e.country
 WHERE
-    totalcount > 0 order by country";
-	
-	
-	
-	
-	
-	
+    totalcount > 0";
 	
 	//echo $sql;exit;
 			$res=mysqli_query($con,$sql);
