@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/ico" href="images/filllogo.png">
   <title><?php echo $pageTitle ?? 'Report'; ?> | SVMobi</title>
+  <?php if (!empty($pageBase)): ?><base href="<?= htmlspecialchars($pageBase) ?>"><?php endif; ?>
 
   <!-- Bootstrap -->
   <link href="vendors/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">

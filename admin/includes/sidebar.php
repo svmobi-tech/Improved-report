@@ -142,6 +142,35 @@
         </li>
       </ul>
     </li>
+    <li class="has-submenu">
+      <a href="#"><i class="fa fa-th"></i> AdNetwork Reports</a>
+      <ul class="hp-submenu">
+        <li>
+          <a href="adreports/all_in_one_report.php"><i class="fa fa-list-alt"></i> All in One Report</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/main_report.php" target="_blank"><i class="fa fa-file-text-o"></i> Main Report</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/perform.php" target="_blank"><i class="fa fa-line-chart"></i> Perform Report</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/advertiser_publisher.php" target="_blank"><i class="fa fa-users"></i> Adv &amp; Pub Report</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/trend_report.php" target="_blank"><i class="fa fa-bar-chart"></i> Trend Report</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/sameactdct.php" target="_blank"><i class="fa fa-exchange"></i> Pub wise Act &amp; Dct</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/counter_reset.php" target="_blank"><i class="fa fa-refresh"></i> Counter Reset</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/pending_cbs.php" target="_blank"><i class="fa fa-clock-o"></i> Pending Callbacks</a>
+        </li>
+      </ul>
+    </li>
   </ul>
 </div>
 
