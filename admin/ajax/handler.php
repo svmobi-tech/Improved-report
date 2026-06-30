@@ -676,7 +676,7 @@ function action_perform_data(mysqli $con): void
         'clicks'       => 'perform_click',
         'low'          => 'perform_lowbalance',
         'trial'        => 'perform_trial',
-        'pinconfirmed' => 'perform_pinconfirm',
+        'pinconfirmed' => 'perform_centtocg',
         'cr'           => 'perform_cr',
         'pc'           => 'perform_chargingpercent',
         'renewal'      => 'perform_renewal',
