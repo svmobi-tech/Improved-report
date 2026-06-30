@@ -174,36 +174,6 @@ if (!$is_ajax) {
     </div>
   </div>
 
-  <!-- Manual cron trigger card -->
-  <div class="hp-card" style="margin-top:16px;">
-    <div class="hp-card-header">
-      <h4><i class="fa fa-play-circle"></i> Manual Activation Insert</h4>
-    </div>
-    <div class="hp-card-body">
-      <div class="row" style="align-items:flex-end;">
-        <div class="col-md-3 col-sm-5">
-          <div class="form-group" style="margin-bottom:0">
-            <label class="hp-filter-label">Select Date</label>
-            <input type="text" id="manual-cron-date" class="form-control birthday"
-                   value="<?php echo date('d-m-Y', strtotime('-1 days')); ?>">
-          </div>
-        </div>
-        <div class="col-md-2 col-sm-4" style="padding-top:4px;">
-          <button id="manual-cron-btn" class="btn btn-warning btn-block"
-                  style="font-weight:600;">
-            <i class="fa fa-bolt"></i> Run Cron for Date
-          </button>
-        </div>
-        <div class="col-md-5 col-sm-12" style="padding-top:4px;">
-          <p id="manual-cron-note" style="margin:0;font-size:12.5px;color:#718096;line-height:1.5;">
-            <i class="fa fa-info-circle" style="color:#667eea;"></i>
-            Opens the cron in a new tab — existing data for that date will be cleared and re-inserted.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Result card -->
   <div class="hp-card">
     <div class="hp-card-header">
@@ -397,6 +367,38 @@ if ($is_ajax) {
     </div><!-- /.hp-card-body -->
   </div><!-- /.hp-card -->
 
+  <!-- Manual Activation Insert (collapsed by default) -->
+  <div class="hp-card" style="margin-top:16px;">
+    <div class="hp-card-header" id="manual-cron-header" style="cursor:pointer;user-select:none;">
+      <h4><i class="fa fa-play-circle"></i> Manual Activation Insert</h4>
+      <button class="btn btn-xs btn-default" id="manual-cron-toggle" style="float:right;margin-top:-2px;" onclick="return false;">
+        <i class="fa fa-chevron-down"></i>
+      </button>
+    </div>
+    <div class="hp-card-body" id="manual-cron-body" style="display:none;">
+      <div class="row" style="align-items:flex-end;">
+        <div class="col-md-3 col-sm-5">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="hp-filter-label">Select Date</label>
+            <input type="text" id="manual-cron-date" class="form-control birthday"
+                   value="<?php echo date('d-m-Y', strtotime('-1 days')); ?>">
+          </div>
+        </div>
+        <div class="col-md-2 col-sm-4" style="padding-top:4px;">
+          <button id="manual-cron-btn" class="btn btn-warning btn-block" style="font-weight:600;">
+            <i class="fa fa-bolt"></i> Run Cron for Date
+          </button>
+        </div>
+        <div class="col-md-5 col-sm-12" style="padding-top:4px;">
+          <p id="manual-cron-note" style="margin:0;font-size:12.5px;color:#718096;line-height:1.5;">
+            <i class="fa fa-info-circle" style="color:#667eea;"></i>
+            Opens the cron in a new tab — existing data for that date will be cleared and re-inserted.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /.hp-content -->
 </div><!-- /.hp-main -->
 
@@ -404,6 +406,19 @@ if ($is_ajax) {
 
 <script>
 $(document).ready(function () {
+    // Toggle Manual Activation Insert card
+    $('#manual-cron-header').on('click', function () {
+        var $body = $('#manual-cron-body');
+        var $icon = $('#manual-cron-toggle i');
+        $body.slideToggle(250, function () {
+            if ($body.is(':visible')) {
+                $icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+            } else {
+                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+            }
+        });
+    });
+
     // Manual cron date picker — future dates disabled
     $('#manual-cron-date').daterangepicker({
         singleDatePicker : true,
