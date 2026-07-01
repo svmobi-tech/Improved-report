@@ -143,7 +143,7 @@ $(document).ready(function () {
         apCheckReady();
         if (!cid) { $('#ap-operator').html('<option value="">-- Select Country First --</option>'); return; }
 
-        $.post('ajax.php', { action: 'report_get_operators', country_id: cid })
+        $.post('adreports/ajax.php', { action: 'report_get_operators', country_id: cid })
         .done(function (r) {
             if (!r.success || !r.operators.length) {
                 $('#ap-operator').html('<option value="">No operators found</option>'); return;
@@ -175,7 +175,7 @@ function apSubmit() {
     var $btn = $('#ap-submit');
     $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
 
-    $.post('ajax.php', {
+    $.post('adreports/ajax.php', {
         action      : 'adreport_adv_pub',
         operator_id : $('#ap-operator').val(),
         start_date  : $('#ap-start').val(),
