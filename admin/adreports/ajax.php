@@ -1189,7 +1189,41 @@ switch ($action) {
     case 'adreport_adv_pub':         action_adreport_adv_pub($conn);         break;
     case 'adreport_trend':           action_adreport_trend($conn);           break;
     case 'adreport_pub_act_dct':     action_adreport_pub_act_dct($conn);     break;
+    case 'counter_reset':            action_counter_reset($conn);            break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: counter_reset — sets counter_no = 0 for selected operator
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_counter_reset(PDO $conn): void
+{
+    $operator_id = (int)($_POST['operator_id'] ?? 0);
+    if (!$operator_id) {
+        echo json_encode(['success' => false, 'error' => 'Please select an operator']); return;
+    }
+
+    $stmt = $conn->prepare("SELECT operator FROM commondb.operator_tbl WHERE operator_id = ? LIMIT 1");
+    $stmt->execute([$operator_id]);
+    $opRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$opRow) { echo json_encode(['success' => false, 'error' => 'Operator not found']); return; }
+
+    $logdb = logDbName($opRow['operator'], 'glamour');
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'No database for operator: ' . $opRow['operator']]); return;
+    }
+
+    try {
+        $affected = $conn->exec("UPDATE {$logdb}.counter_tbl SET counter_no = 0");
+        echo json_encode([
+            'success'  => true,
+            'operator' => $opRow['operator'],
+            'affected' => (int)$affected,
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
 }
