@@ -1192,6 +1192,7 @@ switch ($action) {
     case 'counter_reset':            action_counter_reset($conn);            break;
     case 'pending_cbs_search':       action_pending_cbs_search($conn);       break;
     case 'pending_cbs_push':         action_pending_cbs_push($conn);         break;
+    case 'campaign_add':             action_campaign_add($conn);             break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
@@ -1379,4 +1380,86 @@ function action_pending_cbs_push(PDO $conn): void
         'failed'  => $failed,
         'results' => $results,
     ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: campaign_add — insert campaign into one or more operator DBs
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_campaign_add(PDO $conn): void
+{
+    header('Content-Type: application/json');
+    $product   = 'glamour';
+    $operIds   = isset($_POST['operator_ids']) && is_array($_POST['operator_ids'])
+                 ? array_map('intval', $_POST['operator_ids']) : [];
+    $countryId = (int)($_POST['country_id'] ?? 0);
+    $partner   = trim($_POST['partner']    ?? '');
+    $title     = trim($_POST['title']      ?? '');
+    $price     = (float)($_POST['price']   ?? 10);
+    $url       = trim($_POST['url']        ?? '');
+    $live      = (int)($_POST['live']      ?? 0);
+    $weightage = (float)($_POST['weightage'] ?? 1);
+    $browsers  = isset($_POST['browser']) && is_array($_POST['browser'])
+                 ? implode(',', array_map('trim', $_POST['browser'])) : '';
+    $os        = isset($_POST['os']) && is_array($_POST['os'])
+                 ? implode(',', array_map('trim', $_POST['os'])) : '';
+
+    if (!$operIds) { echo json_encode(['success' => false, 'error' => 'Please select at least one operator.']); return; }
+    if (!$partner) { echo json_encode(['success' => false, 'error' => 'Campaign Partner is required.']); return; }
+    if (!$title)   { echo json_encode(['success' => false, 'error' => 'Campaign Title is required.']); return; }
+    if (!$url)     { echo json_encode(['success' => false, 'error' => 'Campaign URL is required.']); return; }
+    if ($price  <= 0) $price  = 10;
+    if ($weightage <= 0) $weightage = 1;
+
+    $startDT = date('Y-m-d') . ' 00:00:00';
+    $endDT   = date('Y-m-d') . ' 23:59:59';
+
+    $results = [];
+    foreach ($operIds as $opId) {
+        $stOp = $conn->prepare("SELECT operator FROM commondb.operator_tbl WHERE operator_id = ? LIMIT 1");
+        $stOp->execute([$opId]);
+        $opRow = $stOp->fetch(PDO::FETCH_ASSOC);
+        if (!$opRow) {
+            $results[] = ['operator_id' => $opId, 'operator' => '?', 'status' => 'error', 'msg' => 'Operator not found'];
+            continue;
+        }
+        $opName = $opRow['operator'];
+        $logdb  = logDbName($opName, $product);
+        if (!dbExists($conn, $logdb)) {
+            $results[] = ['operator_id' => $opId, 'operator' => $opName, 'status' => 'error', 'msg' => 'Log DB not found: ' . $logdb];
+            continue;
+        }
+        try {
+            $stIns = $conn->prepare(
+                "INSERT INTO {$logdb}.campaign_tbl
+                 (campaign_partner, campaign_title, campaign_url, campaign_price,
+                  campaign_operator, campaign_live, campaign_startdatetime, campaign_enddatetime,
+                  campaign_weight, campaign_weight_track, campaign_country, campaign_category,
+                  campaign_browser, campaign_os)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            );
+            $stIns->execute([
+                $partner, $title, $url, $price,
+                $opName, $live, $startDT, $endDT,
+                $weightage, $weightage, $countryId, $product,
+                $browsers, $os
+            ]);
+            $campId = (int)$conn->lastInsertId();
+
+            $stPay = $conn->prepare(
+                "INSERT INTO commondb.{$product}_advertiser_payout_tbl
+                 (operatorid, campaign_id, payout, payout_datetime)
+                 VALUES (?,?,?,?)"
+            );
+            $stPay->execute([$opId, $campId, $price, $startDT]);
+
+            $results[] = ['operator_id' => $opId, 'operator' => $opName, 'status' => 'ok', 'campaign_id' => $campId];
+        } catch (PDOException $e) {
+            $results[] = ['operator_id' => $opId, 'operator' => $opName, 'status' => 'error', 'msg' => $e->getMessage()];
+        }
+    }
+
+    $ok  = count(array_filter($results, function ($r) { return $r['status'] === 'ok'; }));
+    $err = count($results) - $ok;
+    echo json_encode(['success' => true, 'inserted' => $ok, 'failed' => $err, 'results' => $results]);
 }

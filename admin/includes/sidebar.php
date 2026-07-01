@@ -94,8 +94,7 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
       $otherPages = [
         'samedaydeactivation.php','samedaydeactivation2.php',
         'partner_tracking_report.php','pub_report.php',
-        'activationsetting.php','callbackssetting.php',
-        'cron_running_report.php','currency.php',
+        'cron_running_report.php',
         'callbackreport.php','callbackanalysis.php',
         'adduat.php','alluat.php','checkactivation.php',
       ];
@@ -116,18 +115,9 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
         <li class="<?php echo $currentPage === 'pub_report.php'             ? 'active' : ''; ?>">
           <a href="pub_report.php"><i class="fa fa-file-text-o"></i> PubID wise Report</a> -->
         </li>
-        <li class="<?php echo $currentPage === 'activationsetting.php'      ? 'active' : ''; ?>">
-          <a href="activationsetting.php"><i class="fa fa-toggle-on"></i> Activation Report Setting</a>
-        </li>
-        <li class="<?php echo $currentPage === 'callbackssetting.php'       ? 'active' : ''; ?>">
-          <a href="callbackssetting.php"><i class="fa fa-bell-o"></i> Callback Settings</a>
-        </li>
         <!-- <li class="<?php echo $currentPage === 'cron_running_report.php'    ? 'active' : ''; ?>">
           <a href="cron_running_report.php"><i class="fa fa-clock-o"></i> Cron Analysis</a>
         </li> -->
-        <li class="<?php echo $currentPage === 'currency.php'               ? 'active' : ''; ?>">
-          <a href="currency.php"><i class="fa fa-money"></i> Currency</a>
-        </li>
         <li class="<?php echo $currentPage === 'callbackreport.php'     ? 'active' : ''; ?>">
           <a href="callbackreport.php"><i class="fa fa-phone"></i> CallBackSent Report</a>
         </li>
@@ -175,6 +165,60 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
         </li>
         <li class="<?php echo ($currentPage === 'pending_cbs.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
           <a href="adreports/pending_cbs.php"><i class="fa fa-clock-o"></i> Pending Callbacks</a>
+        </li>
+      </ul>
+    </li>
+    <?php
+      $campPages = ['add_campaign.php', 'campaign_blocking.php', 'campaign_automation.php', 'campaign_capping.php'];
+      $campOpen  = ($currentDir === 'campaign_settings' && in_array($currentPage, $campPages)) ? 'open' : '';
+    ?>
+    <li class="has-submenu <?php echo $campOpen; ?>">
+      <a href="#"><i class="fa fa-cog"></i> Campaign Settings</a>
+      <ul class="hp-submenu">
+        <li class="<?php echo ($currentPage === 'add_campaign.php' && $currentDir === 'campaign_settings') ? 'active' : ''; ?>">
+          <a href="campaign_settings/add_campaign.php"><i class="fa fa-plus-circle"></i> Add Campaign</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/campaign_blocking.php" target="_blank"><i class="fa fa-ban"></i> Campaign Blocking</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/campaign_automation.php" target="_blank"><i class="fa fa-magic"></i> Campaign Automation</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/campaign_capping.php" target="_blank"><i class="fa fa-filter"></i> Campaign Capping</a>
+        </li>
+      </ul>
+    </li>
+    <?php
+      $pubSetPages = ['pub_setting.php', 'import_pub.php'];
+      $pubSetOpen  = in_array($currentPage, $pubSetPages) ? 'open' : '';
+    ?>
+    <li class="has-submenu <?php echo $pubSetOpen; ?>">
+      <a href="#"><i class="fa fa-user"></i> Publisher Settings</a>
+      <ul class="hp-submenu">
+        <li class="<?php echo $currentPage === 'pub_setting.php' ? 'active' : ''; ?>">
+          <a href="/adnetwork_admin/pub_setting.php" target="_blank"><i class="fa fa-users"></i> Publisher Setting</a>
+        </li>
+        <li>
+          <a href="/adnetwork_admin/import_pub.php" target="_blank"><i class="fa fa-upload"></i> Import Publisher</a>
+        </li>
+      </ul>
+    </li>
+    <?php
+      $settingsPages = ['activationsetting.php', 'callbackssetting.php', 'currency.php'];
+      $settingsOpen  = in_array($currentPage, $settingsPages) ? 'open' : '';
+    ?>
+    <li class="has-submenu <?php echo $settingsOpen; ?>">
+      <a href="#"><i class="fa fa-wrench"></i> Settings</a>
+      <ul class="hp-submenu">
+        <li class="<?php echo $currentPage === 'activationsetting.php' ? 'active' : ''; ?>">
+          <a href="activationsetting.php"><i class="fa fa-toggle-on"></i> Activation Setting</a>
+        </li>
+        <li class="<?php echo $currentPage === 'callbackssetting.php' ? 'active' : ''; ?>">
+          <a href="callbackssetting.php"><i class="fa fa-bell-o"></i> Callback Settings</a>
+        </li>
+        <li class="<?php echo $currentPage === 'currency.php' ? 'active' : ''; ?>">
+          <a href="currency.php"><i class="fa fa-money"></i> Currency</a>
         </li>
       </ul>
     </li>
