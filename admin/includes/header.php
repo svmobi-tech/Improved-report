@@ -122,7 +122,8 @@
       transition: max-height .28s ease;
       background: rgba(0,0,0,.18);
     }
-    .hp-nav li.has-submenu.open .hp-submenu { max-height: 600px; }
+    /* direct-child selector prevents nested submenus leaking open */
+    .hp-nav li.has-submenu.open > .hp-submenu { max-height: 2000px; }
     .hp-submenu li a {
       padding: 8px 20px 8px 36px !important;
       font-size: 12.5px !important; color: #8898aa !important;
@@ -136,11 +137,20 @@
     }
     .hp-submenu li a:hover { color: #e2e8f0 !important; background: rgba(102,126,234,.08) !important; }
     .hp-submenu li a:hover .fa { color: #e2e8f0; }
-    .hp-submenu li.active a {
+    .hp-submenu li.active > a {
       color: #fff !important; background: rgba(102,126,234,.14) !important;
       border-left-color: #667eea !important;
     }
-    .hp-submenu li.active a .fa { color: #fff; }
+    .hp-submenu li.active > a .fa { color: #fff; }
+    /* nested sub-submenu: deeper indent */
+    .hp-submenu .hp-submenu li a { padding-left: 52px !important; }
+    /* chevron arrow for nested has-submenu headers */
+    .hp-submenu li.has-submenu > a::after {
+      content: '\f107'; font-family: 'FontAwesome';
+      margin-left: auto; font-size: 11px; flex-shrink: 0;
+      transition: transform .2s ease;
+    }
+    .hp-submenu li.has-submenu.open > a::after { transform: rotate(180deg); }
 
     /* ── Top navigation bar ──────────────────────────────────────── */
     .hp-topnav {

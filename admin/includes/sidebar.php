@@ -137,7 +137,15 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
     </li>
     <?php
       $adreportsPages = ['all_in_one_report.php', 'report.php', 'perform.php', 'advertiser_publisher.php', 'trend_report.php', 'pub_wise_act_dct.php', 'pending_cbs.php'];
-      $adreportsOpen  = ($currentDir === 'adreports' && in_array($currentPage, $adreportsPages)) || $currentPage === 'counter_reset.php' ? 'open' : '';
+      $campPages      = ['add_campaign.php', 'campaign_blocking.php', 'campaign_automation.php', 'campaign_capping.php'];
+      $pubSetPages    = ['add_publisher.php', 'import_pub.php'];
+      $campOpen       = ($currentDir === 'campaign_settings'   && in_array($currentPage, $campPages))   ? 'open' : '';
+      $pubSetOpen     = ($currentDir === 'publisher_settings'  && in_array($currentPage, $pubSetPages)) ? 'open' : '';
+      $adreportsOpen  = ($currentDir === 'adreports' && in_array($currentPage, $adreportsPages))
+                     || $currentPage === 'counter_reset.php'
+                     || $campOpen === 'open'
+                     || $pubSetOpen === 'open'
+                     ? 'open' : '';
     ?>
     <li class="has-submenu <?php echo $adreportsOpen; ?>">
       <a href="#"><i class="fa fa-th"></i> AdNetwork Reports</a>
@@ -166,41 +174,35 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
         <li class="<?php echo ($currentPage === 'pending_cbs.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
           <a href="adreports/pending_cbs.php"><i class="fa fa-clock-o"></i> Pending Callbacks</a>
         </li>
-      </ul>
-    </li>
-    <?php
-      $campPages = ['add_campaign.php', 'campaign_blocking.php', 'campaign_automation.php', 'campaign_capping.php'];
-      $campOpen  = ($currentDir === 'campaign_settings' && in_array($currentPage, $campPages)) ? 'open' : '';
-    ?>
-    <li class="has-submenu <?php echo $campOpen; ?>">
-      <a href="#"><i class="fa fa-cog"></i> Campaign Settings</a>
-      <ul class="hp-submenu">
-        <li class="<?php echo ($currentPage === 'add_campaign.php' && $currentDir === 'campaign_settings') ? 'active' : ''; ?>">
-          <a href="campaign_settings/add_campaign.php"><i class="fa fa-plus-circle"></i> Add Campaign</a>
+        <!-- Campaign Settings nested submenu -->
+        <li class="has-submenu <?php echo $campOpen; ?>">
+          <a href="#"><i class="fa fa-cog"></i> Campaign Settings</a>
+          <ul class="hp-submenu">
+            <li class="<?php echo ($currentPage === 'add_campaign.php' && $currentDir === 'campaign_settings') ? 'active' : ''; ?>">
+              <a href="campaign_settings/add_campaign.php"><i class="fa fa-plus-circle"></i> Add Campaign</a>
+            </li>
+            <li>
+              <a href="/adnetwork_admin/campaign_blocking.php" target="_blank"><i class="fa fa-ban"></i> Campaign Blocking</a>
+            </li>
+            <li>
+              <a href="/adnetwork_admin/campaign_automation.php" target="_blank"><i class="fa fa-magic"></i> Campaign Automation</a>
+            </li>
+            <li>
+              <a href="/adnetwork_admin/campaign_capping.php" target="_blank"><i class="fa fa-filter"></i> Campaign Capping</a>
+            </li>
+          </ul>
         </li>
-        <li>
-          <a href="/adnetwork_admin/campaign_blocking.php" target="_blank"><i class="fa fa-ban"></i> Campaign Blocking</a>
-        </li>
-        <li>
-          <a href="/adnetwork_admin/campaign_automation.php" target="_blank"><i class="fa fa-magic"></i> Campaign Automation</a>
-        </li>
-        <li>
-          <a href="/adnetwork_admin/campaign_capping.php" target="_blank"><i class="fa fa-filter"></i> Campaign Capping</a>
-        </li>
-      </ul>
-    </li>
-    <?php
-      $pubSetPages = ['add_publisher.php', 'import_pub.php'];
-      $pubSetOpen  = ($currentDir === 'publisher_settings' && in_array($currentPage, $pubSetPages)) ? 'open' : '';
-    ?>
-    <li class="has-submenu <?php echo $pubSetOpen; ?>">
-      <a href="#"><i class="fa fa-user"></i> Publisher Settings</a>
-      <ul class="hp-submenu">
-        <li class="<?php echo ($currentPage === 'add_publisher.php' && $currentDir === 'publisher_settings') ? 'active' : ''; ?>">
-          <a href="publisher_settings/add_publisher.php"><i class="fa fa-user-plus"></i> Add Publisher</a>
-        </li>
-        <li>
-          <a href="/adnetwork_admin/import_pub.php" target="_blank"><i class="fa fa-upload"></i> Import Publisher</a>
+        <!-- Publisher Settings nested submenu -->
+        <li class="has-submenu <?php echo $pubSetOpen; ?>">
+          <a href="#"><i class="fa fa-user"></i> Publisher Settings</a>
+          <ul class="hp-submenu">
+            <li class="<?php echo ($currentPage === 'add_publisher.php' && $currentDir === 'publisher_settings') ? 'active' : ''; ?>">
+              <a href="publisher_settings/add_publisher.php"><i class="fa fa-user-plus"></i> Add Publisher</a>
+            </li>
+            <li>
+              <a href="/adnetwork_admin/import_pub.php" target="_blank"><i class="fa fa-upload"></i> Import Publisher</a>
+            </li>
+          </ul>
         </li>
       </ul>
     </li>
