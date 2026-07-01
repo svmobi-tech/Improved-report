@@ -167,8 +167,8 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
         <li class="<?php echo ($currentPage === 'trend_report.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
           <a href="adreports/trend_report.php"><i class="fa fa-bar-chart"></i> Trend Report</a>
         </li>
-        <li>
-          <a href="/adnetwork_admin/sameactdct.php" target="_blank"><i class="fa fa-exchange"></i> Pub wise Act &amp; Dct</a>
+        <li class="<?php echo ($currentPage === 'pub_wise_act_dct.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
+          <a href="adreports/pub_wise_act_dct.php"><i class="fa fa-exchange"></i> Pub wise Act &amp; Dct</a>
         </li>
         <li>
           <a href="/adnetwork_admin/counter_reset.php" target="_blank"><i class="fa fa-refresh"></i> Counter Reset</a>

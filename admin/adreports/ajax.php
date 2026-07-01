@@ -1056,6 +1056,130 @@ function action_adreport_trend(PDO $conn): void
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: adreport_pub_act_dct — PubID-wise Activation & Deactivation
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_adreport_pub_act_dct(PDO $conn): void
+{
+    $operator_id = (int)($_POST['operator_id'] ?? 0);
+    $start_date  = trim($_POST['start_date']   ?? '');
+    $end_date    = trim($_POST['end_date']      ?? '');
+    $type        = strtolower(trim($_POST['type'] ?? 'publisher'));
+    $id          = trim($_POST['id']            ?? 'all');
+
+    if (!$operator_id) {
+        echo json_encode(['success' => false, 'error' => 'Please select an operator']); return;
+    }
+    if (!validateDate($start_date) || !validateDate($end_date)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid date format (DD-MM-YYYY)']); return;
+    }
+    if (!in_array($type, ['publisher', 'advertiser'])) $type = 'publisher';
+
+    $startDT  = date('Y-m-d', strtotime($start_date)) . ' 00:00:00';
+    $endDT    = date('Y-m-d', strtotime($end_date))   . ' 23:59:59';
+    $filterId = ($id !== 'all' && $id !== '') ? (int)$id : 0;
+
+    $stmt = $conn->prepare("SELECT operator FROM commondb.operator_tbl WHERE operator_id = ? LIMIT 1");
+    $stmt->execute([$operator_id]);
+    $opRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$opRow) { echo json_encode(['success' => false, 'error' => 'Operator not found']); return; }
+
+    $logdb = logDbName($opRow['operator'], 'glamour');
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'No database for operator: ' . $opRow['operator']]); return;
+    }
+
+    if ($type === 'publisher') {
+        $actIdCond   = $filterId ? " AND r.advertiser_id = {$filterId}" : '';
+        $clkIdCond   = $filterId ? " AND u.advertiser_id = {$filterId}" : '';
+
+        $sql = "SELECT a.dt, a.pubid,
+                       COALESCE(a.advertiser_name, 'OTHER') title,
+                       COALESCE(c.clicks, 0) clicks,
+                       a.act act
+                FROM (
+                    SELECT COUNT(DISTINCT r.clickid) act,
+                           DATE(r.ad_resp_datetime) dt,
+                           adv.advertiser_name,
+                           r.pubid
+                    FROM {$logdb}.advertiser_response_tbl r
+                    LEFT JOIN commondb.advertiser_tbl adv ON adv.advertiser_id = r.advertiser_id
+                    WHERE r.ad_resp_datetime >= ? AND r.ad_resp_datetime <= ?
+                      AND r.action = 'act'{$actIdCond}
+                    GROUP BY r.pubid, adv.advertiser_name, dt
+                ) a
+                LEFT JOIN (
+                    SELECT COUNT(u.clickid) clicks,
+                           DATE(u.userlog_datetime) dt,
+                           adv.advertiser_name,
+                           u.pubid
+                    FROM {$logdb}.userlog_tbl u
+                    LEFT JOIN commondb.advertiser_tbl adv ON adv.advertiser_id = u.advertiser_id
+                    WHERE u.userlog_datetime >= ? AND u.userlog_datetime <= ?{$clkIdCond}
+                    GROUP BY u.pubid, adv.advertiser_name, dt
+                ) c ON a.dt = c.dt AND a.advertiser_name = c.advertiser_name AND a.pubid = c.pubid
+                ORDER BY a.dt ASC, a.pubid ASC";
+    } else {
+        $actIdCond   = $filterId ? " AND r.campaign_id = {$filterId}"   : '';
+        $clkIdCond   = $filterId ? " AND crt.campaign_id = {$filterId}" : '';
+
+        $sql = "SELECT a.dt, a.pubid,
+                       COALESCE(a.campaign_title, 'OTHER') title,
+                       COALESCE(c.clicks, 0) clicks,
+                       a.act act
+                FROM (
+                    SELECT COUNT(DISTINCT r.clickid) act,
+                           DATE(r.camp_resp_datetime) dt,
+                           ct.campaign_title,
+                           r.pubid
+                    FROM {$logdb}.campaign_response_tbl r
+                    LEFT JOIN {$logdb}.campaign_tbl ct ON ct.campaign_id = r.campaign_id
+                    WHERE r.camp_resp_datetime >= ? AND r.camp_resp_datetime <= ?
+                      AND r.camp_action = 'act'{$actIdCond}
+                    GROUP BY dt, ct.campaign_title, r.pubid
+                ) a
+                LEFT JOIN (
+                    SELECT COUNT(DISTINCT u.clickid) clicks,
+                           DATE(crt.camp_req_datetime) dt,
+                           ct.campaign_title,
+                           crt.pubid
+                    FROM {$logdb}.userlog_tbl u
+                    LEFT JOIN {$logdb}.campaign_request_tbl crt ON u.clickid = crt.clickid
+                    LEFT JOIN {$logdb}.campaign_tbl ct ON crt.campaign_id = ct.campaign_id
+                    WHERE crt.camp_req_datetime >= ? AND crt.camp_req_datetime <= ?{$clkIdCond}
+                    GROUP BY dt, ct.campaign_title, crt.pubid
+                ) c ON a.dt = c.dt AND a.campaign_title = c.campaign_title AND a.pubid = c.pubid
+                ORDER BY a.dt ASC, a.pubid ASC";
+    }
+
+    try {
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$startDT, $endDT, $startDT, $endDT]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $totalClicks = 0;
+        $totalAct    = 0;
+        foreach ($rows as $r) {
+            $totalClicks += (int)$r['clicks'];
+            $totalAct    += (int)$r['act'];
+        }
+
+        echo json_encode([
+            'success'      => true,
+            'operator'     => $opRow['operator'],
+            'type'         => $type,
+            'start_date'   => $start_date,
+            'end_date'     => $end_date,
+            'rows'         => $rows,
+            'total_clicks' => $totalClicks,
+            'total_act'    => $totalAct,
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
 switch ($action) {
     case 'all_in_one_report':        action_all_in_one_report($conn);        break;
     case 'report_get_operators':     action_report_get_operators($conn);     break;
@@ -1064,6 +1188,7 @@ switch ($action) {
     case 'adreport_perform':         action_adreport_perform($conn);         break;
     case 'adreport_adv_pub':         action_adreport_adv_pub($conn);         break;
     case 'adreport_trend':           action_adreport_trend($conn);           break;
+    case 'adreport_pub_act_dct':     action_adreport_pub_act_dct($conn);     break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
