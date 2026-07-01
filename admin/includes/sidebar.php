@@ -146,8 +146,8 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
       </ul>
     </li>
     <?php
-      $adreportsPages = ['all_in_one_report.php', 'report.php', 'perform.php'];
-      $adreportsOpen  = ($currentDir === 'adreports' && in_array($currentPage, $adreportsPages)) ? 'open' : '';
+      $adreportsPages = ['all_in_one_report.php', 'report.php', 'perform.php', 'advertiser_publisher.php', 'trend_report.php', 'pub_wise_act_dct.php', 'pending_cbs.php'];
+      $adreportsOpen  = ($currentDir === 'adreports' && in_array($currentPage, $adreportsPages)) || $currentPage === 'counter_reset.php' ? 'open' : '';
     ?>
     <li class="has-submenu <?php echo $adreportsOpen; ?>">
       <a href="#"><i class="fa fa-th"></i> AdNetwork Reports</a>
@@ -173,8 +173,8 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
         <li class="<?php echo $currentPage === 'counter_reset.php' ? 'active' : ''; ?>">
           <a href="counter_reset.php"><i class="fa fa-refresh"></i> Counter Reset</a>
         </li>
-        <li>
-          <a href="/adnetwork_admin/pending_cbs.php" target="_blank"><i class="fa fa-clock-o"></i> Pending Callbacks</a>
+        <li class="<?php echo ($currentPage === 'pending_cbs.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
+          <a href="adreports/pending_cbs.php"><i class="fa fa-clock-o"></i> Pending Callbacks</a>
         </li>
       </ul>
     </li>

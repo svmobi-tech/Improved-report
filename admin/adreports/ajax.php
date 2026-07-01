@@ -1190,6 +1190,8 @@ switch ($action) {
     case 'adreport_trend':           action_adreport_trend($conn);           break;
     case 'adreport_pub_act_dct':     action_adreport_pub_act_dct($conn);     break;
     case 'counter_reset':            action_counter_reset($conn);            break;
+    case 'pending_cbs_search':       action_pending_cbs_search($conn);       break;
+    case 'pending_cbs_push':         action_pending_cbs_push($conn);         break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
@@ -1226,4 +1228,155 @@ function action_counter_reset(PDO $conn): void
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: pending_cbs_search — find clickids stuck in 'stop' with no recovery
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_pending_cbs_search(PDO $conn): void
+{
+    $operator_id = (int)($_POST['operator_id'] ?? 0);
+    $start_date  = trim($_POST['start_date']   ?? '');
+    $end_date    = trim($_POST['end_date']      ?? '');
+    $type        = strtolower(trim($_POST['type'] ?? 'publisher'));
+    $id          = trim($_POST['id']            ?? 'all');
+
+    if (!$operator_id) {
+        echo json_encode(['success' => false, 'error' => 'Please select an operator']); return;
+    }
+    if (!validateDate($start_date) || !validateDate($end_date)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid date format (DD-MM-YYYY)']); return;
+    }
+    if (!in_array($type, ['publisher', 'advertiser'])) $type = 'publisher';
+
+    $startDT  = date('Y-m-d', strtotime($start_date)) . ' 00:00:00';
+    $endDT    = date('Y-m-d', strtotime($end_date))   . ' 23:59:59';
+    $filterId = ($id !== 'all' && $id !== '') ? (int)$id : 0;
+
+    $stmt = $conn->prepare("SELECT operator FROM commondb.operator_tbl WHERE operator_id = ? LIMIT 1");
+    $stmt->execute([$operator_id]);
+    $opRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$opRow) { echo json_encode(['success' => false, 'error' => 'Operator not found']); return; }
+
+    $logdb = logDbName($opRow['operator'], 'glamour');
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'No database for operator: ' . $opRow['operator']]); return;
+    }
+
+    // ID filter applied directly on advertiser_response_tbl columns (no extra join needed)
+    $idCond = '';
+    if ($filterId) {
+        $idCond = ($type === 'advertiser')
+            ? " AND r2.campaign_id = {$filterId}"
+            : " AND r2.advertiser_id = {$filterId}";
+    }
+
+    $sql = "SELECT
+                r.ad_resp_id,
+                r.advertiser_callbackurl,
+                r.ad_resp_datetime dt,
+                adv.advertiser_name publisher,
+                ct.campaign_title advertiser
+            FROM {$logdb}.advertiser_response_tbl r
+            INNER JOIN {$logdb}.campaign_tbl ct  ON r.campaign_id  = ct.campaign_id
+            INNER JOIN commondb.advertiser_tbl adv ON r.advertiser_id = adv.advertiser_id
+            WHERE r.ad_resp_id IN (
+                SELECT MAX(r2.ad_resp_id)
+                FROM {$logdb}.advertiser_response_tbl r2
+                WHERE r2.ad_resp_datetime >= ? AND r2.ad_resp_datetime <= ?
+                  AND r2.advertiser_response = 'stop'{$idCond}
+                  AND r2.clickid NOT IN (
+                      SELECT DISTINCT r3.clickid
+                      FROM {$logdb}.advertiser_response_tbl r3
+                      WHERE r3.ad_resp_datetime >= ? AND r3.ad_resp_datetime <= ?
+                        AND r3.advertiser_response != 'stop'{$idCond}
+                  )
+                GROUP BY r2.clickid
+            )
+            ORDER BY r.ad_resp_datetime DESC";
+
+    try {
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$startDT, $endDT, $startDT, $endDT]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success'    => true,
+            'operator'   => $opRow['operator'],
+            'operator_id'=> $operator_id,
+            'logdb'      => $logdb,
+            'start_date' => $start_date,
+            'end_date'   => $end_date,
+            'rows'       => $rows,
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: pending_cbs_push — call each callback URL and update response in DB
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_pending_cbs_push(PDO $conn): void
+{
+    $operator_id = (int)($_POST['operator_id'] ?? 0);
+    $ids         = isset($_POST['ids']) && is_array($_POST['ids']) ? $_POST['ids'] : [];
+    $ids         = array_values(array_filter(array_map('intval', $ids)));
+
+    if (!$operator_id || empty($ids)) {
+        echo json_encode(['success' => false, 'error' => 'No items selected']); return;
+    }
+
+    $stmt = $conn->prepare("SELECT operator FROM commondb.operator_tbl WHERE operator_id = ? LIMIT 1");
+    $stmt->execute([$operator_id]);
+    $opRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$opRow) { echo json_encode(['success' => false, 'error' => 'Operator not found']); return; }
+
+    $logdb = logDbName($opRow['operator'], 'glamour');
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'No database for operator']); return;
+    }
+
+    $ctx     = stream_context_create(['http' => ['timeout' => 10, 'ignore_errors' => true]]);
+    $pushed  = 0;
+    $failed  = 0;
+    $results = [];
+
+    foreach ($ids as $respId) {
+        $stmt = $conn->prepare(
+            "SELECT ad_resp_id, advertiser_callbackurl
+             FROM {$logdb}.advertiser_response_tbl
+             WHERE ad_resp_id = ? LIMIT 1"
+        );
+        $stmt->execute([$respId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row || empty($row['advertiser_callbackurl'])) {
+            $failed++;
+            $results[] = ['id' => $respId, 'status' => 'error', 'response' => 'No URL found'];
+            continue;
+        }
+
+        $response = @file_get_contents($row['advertiser_callbackurl'], false, $ctx);
+        $response = ($response === false) ? 'error' : trim($response);
+
+        $upd = $conn->prepare(
+            "UPDATE {$logdb}.advertiser_response_tbl
+             SET advertiser_response = ?
+             WHERE ad_resp_id = ?"
+        );
+        $upd->execute([$response, $respId]);
+
+        $pushed++;
+        $results[] = ['id' => $respId, 'status' => 'ok', 'response' => $response];
+    }
+
+    echo json_encode([
+        'success' => true,
+        'pushed'  => $pushed,
+        'failed'  => $failed,
+        'results' => $results,
+    ]);
 }
