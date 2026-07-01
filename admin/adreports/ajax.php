@@ -1193,6 +1193,7 @@ switch ($action) {
     case 'pending_cbs_search':       action_pending_cbs_search($conn);       break;
     case 'pending_cbs_push':         action_pending_cbs_push($conn);         break;
     case 'campaign_add':             action_campaign_add($conn);             break;
+    case 'publisher_add':            action_publisher_add($conn);            break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
@@ -1454,6 +1455,86 @@ function action_campaign_add(PDO $conn): void
             $stPay->execute([$opId, $campId, $price, $startDT]);
 
             $results[] = ['operator_id' => $opId, 'operator' => $opName, 'status' => 'ok', 'campaign_id' => $campId];
+        } catch (PDOException $e) {
+            $results[] = ['operator_id' => $opId, 'operator' => $opName, 'status' => 'error', 'msg' => $e->getMessage()];
+        }
+    }
+
+    $ok  = count(array_filter($results, function ($r) { return $r['status'] === 'ok'; }));
+    $err = count($results) - $ok;
+    echo json_encode(['success' => true, 'inserted' => $ok, 'failed' => $err, 'results' => $results]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: publisher_add — insert publisher into commondb.advertiser_tbl
+//         and advertiser_callback_counter_tbl for each selected operator
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_publisher_add(PDO $conn): void
+{
+    header('Content-Type: application/json');
+    $product   = 'glamour';
+    $operIds   = isset($_POST['operator_ids']) && is_array($_POST['operator_ids'])
+                 ? array_map('intval', $_POST['operator_ids']) : [];
+    $pubName   = trim($_POST['pub_name']     ?? '');
+    $pubUrl    = trim($_POST['pub_url']      ?? '');
+    $pubDctUrl = trim($_POST['pub_dct_url']  ?? '');
+    $redirectUrl = trim($_POST['redirect_url'] ?? 'http://bit.ly/28TEoDR');
+    $isActive  = (int)($_POST['is_active']   ?? 1);
+
+    if (!$operIds)  { echo json_encode(['success' => false, 'error' => 'Please select at least one operator.']); return; }
+    if (!$pubName)  { echo json_encode(['success' => false, 'error' => 'Publisher Name is required.']); return; }
+    if (!$pubUrl)   { echo json_encode(['success' => false, 'error' => 'Activation PostBack URL is required.']); return; }
+    if (!$redirectUrl) $redirectUrl = 'http://bit.ly/28TEoDR';
+
+    $results = [];
+    foreach ($operIds as $opId) {
+        $stOp = $conn->prepare(
+            "SELECT operator, operator_code FROM commondb.operator_tbl WHERE operator_id = ? LIMIT 1"
+        );
+        $stOp->execute([$opId]);
+        $opRow = $stOp->fetch(PDO::FETCH_ASSOC);
+        if (!$opRow) {
+            $results[] = ['operator_id' => $opId, 'operator' => '?', 'status' => 'error', 'msg' => 'Operator not found'];
+            continue;
+        }
+        $opName      = $opRow['operator'];
+        $opCode      = $opRow['operator_code'] ?? '';
+        $advName     = $pubName . $opCode;
+
+        try {
+            $stIns = $conn->prepare(
+                "INSERT INTO commondb.advertiser_tbl
+                 (advertiser_name, operator, advertiser_url, advertiser_isactive,
+                  advertiser_dct_url, spo_stopcallback, act_stopcallback,
+                  games_spo_stopcallback, games_act_stopcallback,
+                  music_spo_stopcallback, music_act_stopcallback, redirect_url)
+                 VALUES (?,?,?,?,?,100,10,100,10,100,10,?)"
+            );
+            $stIns->execute([$advName, $opId, $pubUrl, $isActive, $pubDctUrl, $redirectUrl]);
+            $advId = (int)$conn->lastInsertId();
+
+            // Insert callback counter in glamour logdb if it exists
+            $logdb = logDbName($opName, $product);
+            $cbInserted = false;
+            if (dbExists($conn, $logdb)) {
+                $stCb = $conn->prepare(
+                    "INSERT INTO {$logdb}.advertiser_callback_counter_tbl
+                     (advertiser_id, spo_callback_counter, act_callback_counter)
+                     VALUES (?,20,20)"
+                );
+                $stCb->execute([$advId]);
+                $cbInserted = true;
+            }
+
+            $results[] = [
+                'operator_id'  => $opId,
+                'operator'     => $opName,
+                'advertiser_id'=> $advId,
+                'adv_name'     => $advName,
+                'cb_inserted'  => $cbInserted,
+                'status'       => 'ok',
+            ];
         } catch (PDOException $e) {
             $results[] = ['operator_id' => $opId, 'operator' => $opName, 'status' => 'error', 'msg' => $e->getMessage()];
         }

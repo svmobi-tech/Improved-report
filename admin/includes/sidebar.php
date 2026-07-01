@@ -190,14 +190,14 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
       </ul>
     </li>
     <?php
-      $pubSetPages = ['pub_setting.php', 'import_pub.php'];
-      $pubSetOpen  = in_array($currentPage, $pubSetPages) ? 'open' : '';
+      $pubSetPages = ['add_publisher.php', 'import_pub.php'];
+      $pubSetOpen  = ($currentDir === 'publisher_settings' && in_array($currentPage, $pubSetPages)) ? 'open' : '';
     ?>
     <li class="has-submenu <?php echo $pubSetOpen; ?>">
       <a href="#"><i class="fa fa-user"></i> Publisher Settings</a>
       <ul class="hp-submenu">
-        <li class="<?php echo $currentPage === 'pub_setting.php' ? 'active' : ''; ?>">
-          <a href="/adnetwork_admin/pub_setting.php" target="_blank"><i class="fa fa-users"></i> Publisher Setting</a>
+        <li class="<?php echo ($currentPage === 'add_publisher.php' && $currentDir === 'publisher_settings') ? 'active' : ''; ?>">
+          <a href="publisher_settings/add_publisher.php"><i class="fa fa-user-plus"></i> Add Publisher</a>
         </li>
         <li>
           <a href="/adnetwork_admin/import_pub.php" target="_blank"><i class="fa fa-upload"></i> Import Publisher</a>
