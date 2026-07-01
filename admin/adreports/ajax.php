@@ -895,6 +895,167 @@ function action_adreport_adv_pub(PDO $conn): void
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: adreport_trend — Hourly pivot table (Date × Hour) for pub/adv
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_adreport_trend(PDO $conn): void
+{
+    $operator_id = (int)($_POST['operator_id'] ?? 0);
+    $start_date  = trim($_POST['start_date']   ?? '');
+    $end_date    = trim($_POST['end_date']      ?? '');
+    $type        = strtolower(trim($_POST['type']    ?? 'publisher'));
+    $id          = trim($_POST['id']            ?? 'all');
+    $display     = strtolower(trim($_POST['display'] ?? 'activation'));
+
+    if (!$operator_id) {
+        echo json_encode(['success' => false, 'error' => 'Please select an operator']); return;
+    }
+    if (!validateDate($start_date) || !validateDate($end_date)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid date format (DD-MM-YYYY)']); return;
+    }
+    if (!in_array($type, ['publisher', 'advertiser'])) $type = 'publisher';
+    if (!in_array($display, ['activation', 'churn', 'cb', 'cr', 'clicks'])) $display = 'activation';
+
+    $startDT  = date('Y-m-d', strtotime($start_date)) . ' 00:00:00';
+    $endDT    = date('Y-m-d', strtotime($end_date))   . ' 23:59:59';
+    $filterId = ($id !== 'all' && $id !== '') ? (int)$id : 0;
+
+    $stmt = $conn->prepare("SELECT operator FROM commondb.operator_tbl WHERE operator_id = ? LIMIT 1");
+    $stmt->execute([$operator_id]);
+    $opRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$opRow) { echo json_encode(['success' => false, 'error' => 'Operator not found']); return; }
+
+    $logdb = logDbName($opRow['operator'], 'glamour');
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'No database for operator: ' . $opRow['operator']]); return;
+    }
+
+    $sql    = '';
+    $params = [];
+
+    if ($type === 'publisher') {
+        $idCond      = $filterId ? " AND r.advertiser_id = {$filterId}"   : '';
+        $clickIdCond = $filterId ? " AND crt.advertiser_id = {$filterId}" : '';
+
+        switch ($display) {
+            case 'activation':
+                $sql    = "SELECT COUNT(DISTINCT r.clickid) val, DATE(r.ad_resp_datetime) dt, HOUR(r.ad_resp_datetime) hr
+                           FROM {$logdb}.advertiser_response_tbl r
+                           WHERE r.ad_resp_datetime >= ? AND r.ad_resp_datetime <= ? AND r.action = 'act'{$idCond}
+                           GROUP BY dt, hr ORDER BY dt ASC, hr ASC";
+                $params = [$startDT, $endDT]; break;
+            case 'churn':
+                $sql    = "SELECT COUNT(r.clickid) val, DATE(r.ad_resp_datetime) dt, HOUR(r.ad_resp_datetime) hr
+                           FROM {$logdb}.advertiser_response_tbl r
+                           WHERE r.ad_resp_datetime >= ? AND r.ad_resp_datetime <= ? AND r.action = 'dct'{$idCond}
+                           GROUP BY dt, hr ORDER BY dt ASC, hr ASC";
+                $params = [$startDT, $endDT]; break;
+            case 'cb':
+                $sql    = "SELECT COUNT(r.clickid) val, DATE(r.ad_resp_datetime) dt, HOUR(r.ad_resp_datetime) hr
+                           FROM {$logdb}.advertiser_response_tbl r
+                           WHERE r.ad_resp_datetime >= ? AND r.ad_resp_datetime <= ?
+                             AND r.advertiser_response != 'stop' AND r.action = 'act'{$idCond}
+                           GROUP BY dt, hr ORDER BY dt ASC, hr ASC";
+                $params = [$startDT, $endDT]; break;
+            case 'cr':
+                $sql    = "SELECT c.dt, c.hr,
+                                  CASE WHEN c.clicks = 0 OR a.acts IS NULL THEN 0
+                                       ELSE ROUND((a.acts / c.clicks) * 100, 2) END val
+                           FROM (
+                               SELECT DATE(u.userlog_datetime) dt, HOUR(u.userlog_datetime) hr, COUNT(u.clickid) clicks
+                               FROM {$logdb}.userlog_tbl u
+                               LEFT JOIN {$logdb}.campaign_request_tbl crt ON u.clickid = crt.clickid
+                               WHERE u.userlog_datetime >= ? AND u.userlog_datetime <= ?{$clickIdCond}
+                               GROUP BY dt, hr
+                           ) c
+                           LEFT JOIN (
+                               SELECT DATE(r.ad_resp_datetime) dt, HOUR(r.ad_resp_datetime) hr, COUNT(r.clickid) acts
+                               FROM {$logdb}.advertiser_response_tbl r
+                               WHERE r.ad_resp_datetime >= ? AND r.ad_resp_datetime <= ? AND r.action = 'act'{$idCond}
+                               GROUP BY dt, hr
+                           ) a ON c.dt = a.dt AND c.hr = a.hr
+                           ORDER BY c.dt ASC, c.hr ASC";
+                $params = [$startDT, $endDT, $startDT, $endDT]; break;
+            default: // clicks
+                $clickIdCond2 = $filterId ? " AND u.advertiser_id = {$filterId}" : '';
+                $sql    = "SELECT COUNT(u.clickid) val, DATE(u.userlog_datetime) dt, HOUR(u.userlog_datetime) hr
+                           FROM {$logdb}.userlog_tbl u
+                           WHERE u.userlog_datetime >= ? AND u.userlog_datetime <= ?{$clickIdCond2}
+                           GROUP BY dt, hr ORDER BY dt ASC, hr ASC";
+                $params = [$startDT, $endDT];
+        }
+    } else {
+        $idCond      = $filterId ? " AND r.campaign_id = {$filterId}"     : '';
+        $clickIdCond = $filterId ? " AND crt.campaign_id = {$filterId}"   : '';
+
+        switch ($display) {
+            case 'activation':
+                $sql    = "SELECT COUNT(r.clickid) val, DATE(r.camp_resp_datetime) dt, HOUR(r.camp_resp_datetime) hr
+                           FROM {$logdb}.campaign_response_tbl r
+                           WHERE r.camp_resp_datetime >= ? AND r.camp_resp_datetime <= ? AND r.camp_action = 'act'{$idCond}
+                           GROUP BY dt, hr ORDER BY dt ASC, hr ASC";
+                $params = [$startDT, $endDT]; break;
+            case 'churn':
+                $sql    = "SELECT COUNT(r.clickid) val, DATE(r.camp_resp_datetime) dt, HOUR(r.camp_resp_datetime) hr
+                           FROM {$logdb}.campaign_response_tbl r
+                           WHERE r.camp_resp_datetime >= ? AND r.camp_resp_datetime <= ? AND r.camp_action = 'dct'{$idCond}
+                           GROUP BY dt, hr ORDER BY dt ASC, hr ASC";
+                $params = [$startDT, $endDT]; break;
+            case 'cb':
+                $sql    = "SELECT COUNT(r.clickid) val, DATE(r.camp_resp_datetime) dt, HOUR(r.camp_resp_datetime) hr
+                           FROM {$logdb}.campaign_response_tbl r
+                           WHERE r.camp_resp_datetime >= ? AND r.camp_resp_datetime <= ?{$idCond}
+                           GROUP BY dt, hr ORDER BY dt ASC, hr ASC";
+                $params = [$startDT, $endDT]; break;
+            case 'cr':
+                $sql    = "SELECT c.dt, c.hr,
+                                  CASE WHEN c.clicks = 0 OR a.acts IS NULL THEN 0
+                                       ELSE ROUND((a.acts / c.clicks) * 100, 2) END val
+                           FROM (
+                               SELECT DATE(u.userlog_datetime) dt, HOUR(u.userlog_datetime) hr, COUNT(u.clickid) clicks
+                               FROM {$logdb}.userlog_tbl u
+                               LEFT JOIN {$logdb}.campaign_request_tbl crt ON u.clickid = crt.clickid
+                               WHERE u.userlog_datetime >= ? AND u.userlog_datetime <= ?{$clickIdCond}
+                               GROUP BY dt, hr
+                           ) c
+                           LEFT JOIN (
+                               SELECT DATE(r.camp_resp_datetime) dt, HOUR(r.camp_resp_datetime) hr, COUNT(r.clickid) acts
+                               FROM {$logdb}.campaign_response_tbl r
+                               WHERE r.camp_resp_datetime >= ? AND r.camp_resp_datetime <= ? AND r.camp_action = 'act'{$idCond}
+                               GROUP BY dt, hr
+                           ) a ON c.dt = a.dt AND c.hr = a.hr
+                           ORDER BY c.dt ASC, c.hr ASC";
+                $params = [$startDT, $endDT, $startDT, $endDT]; break;
+            default: // clicks
+                $sql    = "SELECT COUNT(u.clickid) val, DATE(u.userlog_datetime) dt, HOUR(u.userlog_datetime) hr
+                           FROM {$logdb}.userlog_tbl u
+                           WHERE u.userlog_datetime >= ? AND u.userlog_datetime <= ?
+                           GROUP BY dt, hr ORDER BY dt ASC, hr ASC";
+                $params = [$startDT, $endDT];
+        }
+    }
+
+    try {
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success'    => true,
+            'operator'   => $opRow['operator'],
+            'type'       => $type,
+            'display'    => $display,
+            'is_cr'      => ($display === 'cr'),
+            'start_date' => $start_date,
+            'end_date'   => $end_date,
+            'rows'       => $rows,
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
 switch ($action) {
     case 'all_in_one_report':        action_all_in_one_report($conn);        break;
     case 'report_get_operators':     action_report_get_operators($conn);     break;
@@ -902,6 +1063,7 @@ switch ($action) {
     case 'report_data':              action_report_data($conn);              break;
     case 'adreport_perform':         action_adreport_perform($conn);         break;
     case 'adreport_adv_pub':         action_adreport_adv_pub($conn);         break;
+    case 'adreport_trend':           action_adreport_trend($conn);           break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
