@@ -151,7 +151,9 @@ $(document).ready(function () {
             } else {
                 var opts = '<option value="all">All (' + advs.length + ' advertisers)</option>';
                 advs.forEach(function (a) {
-                    opts += '<option value="' + a.id + '">' + $('<span>').text(a.name).html() + '</option>';
+                    var safeVal  = $('<span>').text(a.id).html();
+                    var safeName = $('<span>').text(a.name).html();
+                    opts += '<option value="' + safeVal + '">' + safeName + '</option>';
                 });
                 $('#cbr-advertiser').html(opts).prop('disabled', false);
             }
@@ -183,6 +185,37 @@ $(document).ready(function () {
             checkBothDone();
         });
     }
+
+    // ── Advertiser changed → re-filter operator list ──────────────────────────
+    $('#cbr-advertiser').on('change', function () {
+        var advId   = $(this).val();
+        var product = $('#cbr-product').val();
+        var start   = $('#cbr-start').val();
+        var end     = $('#cbr-end').val();
+
+        $('#cbr-op-spinner').show();
+        $('#cbr-operator').prop('disabled', true).html('<option value="">Loading...</option>');
+        $('#cbr-submit-btn').prop('disabled', true);
+
+        var action  = (!advId || advId === 'all') ? 'callback_report_operators' : 'callback_report_operators_by_advertiser';
+        var payload = { action: action, product: product, start_date: start, end_date: end };
+        if (advId && advId !== 'all') payload.advertiser = advId;
+
+        $.post('ajax/handler.php', payload, function (ops) {
+            $('#cbr-op-spinner').hide();
+            if (!ops || ops.length === 0) {
+                $('#cbr-operator').html('<option value="">-- No data for this advertiser --</option>').prop('disabled', true);
+            } else {
+                var opts = '<option value="all">All (' + ops.length + ' operators)</option>';
+                ops.forEach(function (op) { opts += '<option value="' + op + '">' + op + '</option>'; });
+                $('#cbr-operator').html(opts).prop('disabled', false);
+                $('#cbr-submit-btn').prop('disabled', false);
+            }
+        }, 'json').fail(function () {
+            $('#cbr-op-spinner').hide();
+            $('#cbr-operator').html('<option value="">-- Failed to load --</option>').prop('disabled', true);
+        });
+    });
 
     $('#cbr-product').on('change', reloadFilters);
     $('#cbr-start, #cbr-end').on('apply.daterangepicker', reloadFilters);

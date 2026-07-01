@@ -31,9 +31,10 @@ switch ($action) {
     case 'callback_setting_update':      action_callback_setting_update($con);      break;
     case 'currency_load':                action_currency_load($con);                break;
     case 'currency_update':             action_currency_update($con);              break;
-    case 'callback_report_load':        action_callback_report_load($con);         break;
-    case 'callback_report_operators':   action_callback_report_operators($con);    break;
-    case 'callback_report_advertisers': action_callback_report_advertisers($con);  break;
+    case 'callback_report_load':                      action_callback_report_load($con);                      break;
+    case 'callback_report_operators':                 action_callback_report_operators($con);                 break;
+    case 'callback_report_advertisers':               action_callback_report_advertisers($con);               break;
+    case 'callback_report_operators_by_advertiser':   action_callback_report_operators_by_advertiser($con);   break;
     case 'uat_add':                     action_uat_add($con);                      break;
     case 'uat_countries':               action_uat_countries($con);                break;
     case 'uat_load':                    action_uat_load($con);                     break;
@@ -3097,16 +3098,15 @@ function action_callback_report_load(mysqli $con): void
         $stmt->bind_param('ssss', $start_date, $end_date, $product, $product);
 
     } elseif ($operator === 'all' && $advertiser !== 'all') {
-        $stmt = $con->prepare($base_select . " AND advertiser = ?" . $base_tail);
+        $stmt = $con->prepare($base_select . " AND mainreport.advname = ? " . $base_tail);
         $stmt->bind_param('sssss', $start_date, $end_date, $product, $advertiser, $product);
 
     } elseif ($operator !== 'all' && $advertiser === 'all') {
-        // $stmt = $con->prepare($base_select . " AND mainreport.operator = ? AND advertiser > 0" . $base_tail);
         $stmt = $con->prepare($base_select . " AND mainreport.operator = ? " . $base_tail);
         $stmt->bind_param('sssss', $start_date, $end_date, $product, $operator, $product);
 
     } else {
-        $stmt = $con->prepare($base_select . " AND mainreport.operator = ? AND advertiser = ?" . $base_tail);
+        $stmt = $con->prepare($base_select . " AND mainreport.operator = ? AND mainreport.advname = ? " . $base_tail);
         $stmt->bind_param('ssssss', $start_date, $end_date, $product, $operator, $advertiser, $product);
     }
 
@@ -3247,23 +3247,63 @@ function action_callback_report_advertisers(mysqli $con): void
     if ($start_date < '2020-04-13') $start_date = '2020-04-13';
 
     $stmt = $con->prepare(
-        "SELECT DISTINCT m.advertiser AS id, a.advname AS name
-         FROM {$report}.mainreport m
-         LEFT JOIN advertiserdb.advertiser a ON m.advertiser = a.advertiserid
-         LEFT JOIN {$report}.operatorcost oc ON m.operator = oc.operator AND oc.product = ?
-         WHERE m.date >= ? AND m.date <= ?
-           AND m.product = ?
-           AND m.advertiser > 0 AND m.cbsent > 0
-         ORDER BY a.advname ASC"
+        "SELECT DISTINCT advname AS name
+         FROM {$report}.mainreport
+         WHERE date >= ? AND date <= ?
+           AND product = ?
+           AND advname IS NOT NULL AND advname != ''
+         ORDER BY advname ASC"
     );
-    $stmt->bind_param('ssss', $product, $start_date, $end_date, $product);
+    $stmt->bind_param('sss', $start_date, $end_date, $product);
     $stmt->execute();
     $res  = $stmt->get_result();
     $advs = [];
-    while ($r = $res->fetch_assoc()) $advs[] = ['id' => $r['id'], 'name' => $r['name'] ?: 'Advertiser #' . $r['id']];
+    while ($r = $res->fetch_assoc()) $advs[] = ['id' => $r['name'], 'name' => $r['name']];
     $stmt->close();
 
     echo json_encode($advs);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTION: Operators filtered by a specific advertiser (cascading dropdown)
+// Called by: callbackreport.php  →  POST ajax/handler.php?action=callback_report_operators_by_advertiser
+// POST params: product, start_date (d-m-Y), end_date (d-m-Y), advertiser (advname string)
+// Returns: JSON array of operator strings
+// ═══════════════════════════════════════════════════════════════════════════════
+function action_callback_report_operators_by_advertiser(mysqli $con): void
+{
+    header('Content-Type: application/json');
+    $report     = 'gamebardb_vodafone_qatar_report';
+    $product    = trim($_POST['product']    ?? '');
+    $advertiser = trim($_POST['advertiser'] ?? '');
+    $start_raw  = trim($_POST['start_date'] ?? date('d-m-Y'));
+    $end_raw    = trim($_POST['end_date']   ?? date('d-m-Y'));
+
+    if (!$product || !$advertiser) {
+        echo json_encode([]);
+        return;
+    }
+
+    $start_date = date('Y-m-d', strtotime($start_raw));
+    $end_date   = date('Y-m-d', strtotime($end_raw));
+    if ($start_date < '2020-04-13') $start_date = '2020-04-13';
+
+    $stmt = $con->prepare(
+        "SELECT DISTINCT mainreport.operator
+         FROM {$report}.mainreport
+         WHERE mainreport.date >= ? AND mainreport.date <= ?
+           AND mainreport.product = ?
+           AND mainreport.advname = ?
+         ORDER BY mainreport.operator ASC"
+    );
+    $stmt->bind_param('ssss', $start_date, $end_date, $product, $advertiser);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $ops = [];
+    while ($r = $res->fetch_assoc()) $ops[] = $r['operator'];
+    $stmt->close();
+
+    echo json_encode($ops);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
