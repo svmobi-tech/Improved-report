@@ -826,12 +826,82 @@ function perform_sql_advertiser(string $display, string $logdb, string $startDT,
 // ─────────────────────────────────────────────────────────────────────────────
 
 $action = trim($_POST['action'] ?? '');
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: adreport_adv_pub — Advertiser & Publisher report (campaign × publisher daily counts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_adreport_adv_pub(PDO $conn): void
+{
+    $operator_id = (int)($_POST['operator_id'] ?? 0);
+    $start_date  = trim($_POST['start_date']   ?? '');
+    $end_date    = trim($_POST['end_date']      ?? '');
+    $display     = strtolower(trim($_POST['display'] ?? 'activation'));
+
+    if (!$operator_id) {
+        echo json_encode(['success' => false, 'error' => 'Please select an operator']); return;
+    }
+    if (!validateDate($start_date) || !validateDate($end_date)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid date format (DD-MM-YYYY)']); return;
+    }
+    if (!in_array($display, ['activation', 'cbs'])) $display = 'activation';
+
+    $startDT = date('Y-m-d', strtotime($start_date)) . ' 00:00:00';
+    $endDT   = date('Y-m-d', strtotime($end_date))   . ' 23:59:59';
+
+    $stmt = $conn->prepare("SELECT operator FROM commondb.operator_tbl WHERE operator_id = ? LIMIT 1");
+    $stmt->execute([$operator_id]);
+    $opRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$opRow) { echo json_encode(['success' => false, 'error' => 'Operator not found']); return; }
+
+    $logdb    = logDbName($opRow['operator'], 'glamour');
+    $commondb = 'commondb';
+
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'No database for operator: ' . $opRow['operator']]); return;
+    }
+
+    $extra = ($display === 'cbs') ? " AND r.advertiser_response != 'stop'" : '';
+
+    try {
+        $sql  = "SELECT DATE(r.ad_resp_datetime) AS dt,
+                        c.campaign_title AS campaign,
+                        a.advertiser_name AS publisher,
+                        COUNT(*) AS cnt
+                 FROM {$logdb}.advertiser_response_tbl r
+                 INNER JOIN {$logdb}.campaign_tbl c ON r.campaign_id = c.campaign_id
+                 INNER JOIN {$commondb}.advertiser_tbl a ON r.advertiser_id = a.advertiser_id
+                 WHERE r.ad_resp_datetime >= ? AND r.ad_resp_datetime <= ?{$extra}
+                 GROUP BY dt, r.campaign_id, r.advertiser_id
+                 ORDER BY dt ASC, c.campaign_title ASC, a.advertiser_name ASC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$startDT, $endDT]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $total = 0;
+        foreach ($rows as $r) $total += (int)$r['cnt'];
+
+        echo json_encode([
+            'success'    => true,
+            'operator'   => $opRow['operator'],
+            'display'    => $display,
+            'start_date' => $start_date,
+            'end_date'   => $end_date,
+            'rows'       => $rows,
+            'total'      => $total,
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
 switch ($action) {
     case 'all_in_one_report':        action_all_in_one_report($conn);        break;
     case 'report_get_operators':     action_report_get_operators($conn);     break;
     case 'report_get_names':         action_report_get_names($conn);         break;
     case 'report_data':              action_report_data($conn);              break;
     case 'adreport_perform':         action_adreport_perform($conn);         break;
+    case 'adreport_adv_pub':         action_adreport_adv_pub($conn);         break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
