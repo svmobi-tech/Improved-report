@@ -298,17 +298,17 @@ function trRender(r) {
     var TDB = 'style="text-align:center;white-space:nowrap;padding:5px 4px;font-size:12px;font-weight:600;"';
     var TF  = 'style="background:#edf2f7;font-weight:700;text-align:center;white-space:nowrap;padding:5px 3px;font-size:12px;"';
 
-    // colgroup — tells both browser and DataTables the exact widths
-    var colgroup = '<colgroup><col style="width:90px;min-width:90px;">';
-    $.each(hours, function () { colgroup += '<col style="width:38px;min-width:38px;">'; });
-    colgroup += '<col style="width:62px;min-width:62px;"></colgroup>';
+    // colgroup sets widths at the browser level (DataTables also reads these)
+    var colgroup = '<colgroup><col style="width:90px;">';
+    $.each(hours, function () { colgroup += '<col style="width:36px;">'; });
+    colgroup += '<col style="width:60px;"></colgroup>';
 
-    // Header row — Date + each hour + Total
-    var thead = '<tr><th ' + TH + '>Date</th>';
+    // Header row
+    var thead = '<tr><th ' + TH + ' style="background:#4a5568;color:#fff;text-align:center;white-space:nowrap;padding:7px 4px;font-size:12px;width:90px;">Date</th>';
     $.each(hours, function (i, hr) {
-        thead += '<th ' + TH + '>' + hr + '</th>';
+        thead += '<th ' + TH + ' style="background:#4a5568;color:#fff;text-align:center;white-space:nowrap;padding:7px 2px;font-size:12px;width:36px;">' + hr + '</th>';
     });
-    thead += '<th ' + TH + '>Total</th></tr>';
+    thead += '<th ' + TH + ' style="background:#4a5568;color:#fff;text-align:center;white-space:nowrap;padding:7px 4px;font-size:12px;width:60px;">Total</th></tr>';
 
     // Body rows
     var tbody = '';
@@ -347,22 +347,19 @@ function trRender(r) {
 
     if ($.fn.DataTable.isDataTable('#tr-tbl')) { $('#tr-tbl').DataTable().destroy(); }
 
-    // Build columnDefs so DataTables respects explicit widths
     var hrTargets = [];
     for (var i = 1; i <= hours.length; i++) hrTargets.push(i);
-    var dtColDefs = [
-        { width: '90px',  targets: 0 },
-        { width: '38px',  targets: hrTargets },
-        { width: '62px',  targets: hours.length + 1 }
-    ];
 
     $('#tr-tbl').DataTable({
         pageLength   : 50,
         order        : [],
         orderClasses : false,
         autoWidth    : false,
-        scrollX      : true,
-        columnDefs   : dtColDefs,
+        columnDefs   : [
+            { width: '90px', targets: 0 },
+            { width: '36px', targets: hrTargets },
+            { width: '60px', targets: hours.length + 1 }
+        ],
         dom          : '<"top"Bf>rt<"bottom"ip><"clear">',
         buttons      : [
             { extend: 'copy',  className: 'btn btn-default' },
