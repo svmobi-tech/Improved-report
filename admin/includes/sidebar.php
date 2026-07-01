@@ -1,4 +1,7 @@
-<?php $currentPage = basename($_SERVER['PHP_SELF']); ?>
+<?php
+$currentPage = basename($_SERVER['PHP_SELF']);
+$currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports' etc.
+?>
 <div class="hp-sidebar">
   <div class="hp-sidebar-brand">
     <img src="images/logo.png" alt="SVMobi Logo">
@@ -24,13 +27,13 @@
     <li class="<?php echo $currentPage === 'subdash.php' ? 'active' : ''; ?>">
       <a href="subdash.php"><i class="fa fa-th-large"></i> Sub-Dashboard</a>
     </li>
-    <li class="<?php echo $currentPage === 'report.php' ? 'active' : ''; ?>">
+    <li class="<?php echo ($currentPage === 'report.php' && $currentDir !== 'adreports') ? 'active' : ''; ?>">
       <a href="report.php"><i class="fa fa-file-text-o"></i> Main Report</a>
     </li>
     <li class="<?php echo $currentPage === 'activationreport.php' ? 'active' : ''; ?>">
       <a href="activationreport.php"><i class="fa fa-bolt"></i> Activation Report</a>
     </li>
-    <li class="<?php echo $currentPage === 'perform.php' ? 'active' : ''; ?>">
+    <li class="<?php echo ($currentPage === 'perform.php' && $currentDir !== 'adreports') ? 'active' : ''; ?>">
       <a href="perform.php"><i class="fa fa-line-chart"></i> Perform Report</a>
     </li>
     <li class="<?php echo $currentPage === 'trend_report.php' ? 'active' : ''; ?>">
@@ -142,17 +145,21 @@
         </li>
       </ul>
     </li>
-    <li class="has-submenu">
+    <?php
+      $adreportsPages = ['all_in_one_report.php', 'report.php', 'perform.php'];
+      $adreportsOpen  = ($currentDir === 'adreports' && in_array($currentPage, $adreportsPages)) ? 'open' : '';
+    ?>
+    <li class="has-submenu <?php echo $adreportsOpen; ?>">
       <a href="#"><i class="fa fa-th"></i> AdNetwork Reports</a>
       <ul class="hp-submenu">
-        <li>
+        <li class="<?php echo ($currentPage === 'all_in_one_report.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
           <a href="adreports/all_in_one_report.php"><i class="fa fa-list-alt"></i> All in One Report</a>
         </li>
-        <li>
-          <a href="/adnetwork_admin/main_report.php" target="_blank"><i class="fa fa-file-text-o"></i> Main Report</a>
+        <li class="<?php echo ($currentPage === 'report.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
+          <a href="adreports/report.php"><i class="fa fa-file-text-o"></i> Main Report</a>
         </li>
-        <li>
-          <a href="/adnetwork_admin/perform.php" target="_blank"><i class="fa fa-line-chart"></i> Perform Report</a>
+        <li class="<?php echo ($currentPage === 'perform.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
+          <a href="adreports/perform.php"><i class="fa fa-line-chart"></i> Perform Report</a>
         </li>
         <li>
           <a href="/adnetwork_admin/advertiser_publisher.php" target="_blank"><i class="fa fa-users"></i> Adv &amp; Pub Report</a>
