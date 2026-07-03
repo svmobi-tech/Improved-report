@@ -3351,7 +3351,7 @@ function action_callback_report_operators_by_advertiser(mysqli $con): void
 {
     header('Content-Type: application/json');
     $report     = 'gamebardb_vodafone_qatar_report';
-    $product    = trim($_POST['product']    ?? '');
+    $product    = mysqli_real_escape_string($con, trim($_POST['product']    ?? ''));
     $advertiser = trim($_POST['advertiser'] ?? '');
     $start_raw  = trim($_POST['start_date'] ?? date('d-m-Y'));
     $end_raw    = trim($_POST['end_date']   ?? date('d-m-Y'));
@@ -3361,25 +3361,47 @@ function action_callback_report_operators_by_advertiser(mysqli $con): void
         return;
     }
 
-    $start_date = date('Y-m-d', strtotime($start_raw));
-    $end_date   = date('Y-m-d', strtotime($end_raw));
-    if ($start_date < '2020-04-13') $start_date = '2020-04-13';
+    $start_date = date('Y-m-d 00:00:00', strtotime($start_raw));
+    $end_date   = date('Y-m-d 23:59:59', strtotime($end_raw));
 
-    $stmt = $con->prepare(
-        "SELECT DISTINCT mainreport.operator
-         FROM {$report}.mainreport
-         WHERE mainreport.date >= ? AND mainreport.date <= ?
-           AND mainreport.product = ?
-           AND mainreport.advname = ?
-         ORDER BY mainreport.operator ASC"
+    // Fetch both SP URL templates for every operator of this product
+    $res_q = mysqli_query($con,
+        "SELECT operator, perform_callback, perform_centtocg
+         FROM {$report}.mainreportquery
+         WHERE product = '{$product}'"
     );
-    $stmt->bind_param('ssss', $start_date, $end_date, $product, $advertiser);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $ops = [];
-    while ($r = $res->fetch_assoc()) $ops[] = $r['operator'];
-    $stmt->close();
 
+    $ops = [];
+    while ($res_q && $qrow = mysqli_fetch_assoc($res_q)) {
+        $op_name  = $qrow['operator'];
+        $has_data = false;
+
+        // Check both SPs — include operator if the specific advertiser has act > 0 in either
+        foreach (['perform_callback', 'perform_centtocg'] as $col) {
+            if ($has_data) break;
+            $url = $qrow[$col] ?? '';
+            if (!$url) continue;
+            $q = str_replace(['[start_date]', '[end_date]', '[hours]'],
+                             [$start_date,    $end_date,    '24'], $url);
+            $r = mysqli_query($con, $q);
+            if ($r) {
+                while ($row = mysqli_fetch_array($r)) {
+                    if (($row['advname'] ?? '') === $advertiser && (int)($row['act'] ?? 0) > 0) {
+                        $has_data = true;
+                        break;
+                    }
+                }
+                mysqli_free_result($r);
+            }
+            while (mysqli_more_results($con) && mysqli_next_result($con)) {
+                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
+            }
+        }
+
+        if ($has_data) $ops[] = $op_name;
+    }
+
+    sort($ops);
     echo json_encode($ops);
 }
 
