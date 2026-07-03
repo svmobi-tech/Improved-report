@@ -19,15 +19,24 @@ include('../includes/check_session.php');
 <?php include('../includes/top_navigation.php'); ?>
 <div class="hp-content">
 
-<!-- ─── Filter / Block Card ──────────────────────────────────────────────────── -->
+<!-- ─── Input Card ────────────────────────────────────────────────────────────── -->
 <div class="hp-card hp-filter-card">
     <div class="hp-card-header">
         <h4><i class="fa fa-ban"></i> PubID wise Blocking</h4>
     </div>
     <div class="hp-card-body">
 
+        <!-- Banners -->
+        <div id="pib-success" style="display:none;margin-bottom:16px;padding:12px 16px;color:#276749;background:#f0fff4;border-left:4px solid #48bb78;border-radius:4px;">
+            <i class="fa fa-check-circle"></i> <span id="pib-success-msg"></span>
+        </div>
+        <div id="pib-error" style="display:none;margin-bottom:16px;padding:12px 16px;color:#c53030;background:#fff5f5;border-left:4px solid #fc8181;border-radius:4px;">
+            <i class="fa fa-exclamation-triangle"></i> <span id="pib-error-msg"></span>
+        </div>
+
         <div class="row">
 
+            <!-- Operator -->
             <div class="col-md-3 col-sm-6 col-xs-12">
                 <div class="form-group">
                     <label class="hp-filter-label">
@@ -42,10 +51,11 @@ include('../includes/check_session.php');
                 </div>
             </div>
 
+            <!-- Advertiser (auto-loads on operator change) -->
             <div class="col-md-3 col-sm-6 col-xs-12">
                 <div class="form-group">
                     <label class="hp-filter-label">
-                        Advertiser
+                        Publisher Name
                         <span id="pib-adv-spinner" style="display:none;margin-left:6px;">
                             <i class="fa fa-spinner fa-spin" style="font-size:11px;color:#667eea;"></i>
                         </span>
@@ -56,39 +66,31 @@ include('../includes/check_session.php');
                 </div>
             </div>
 
-            <div class="col-md-2 col-sm-4 col-xs-12">
-                <div class="form-group">
-                    <label class="hp-filter-label">&nbsp;</label>
-                    <button id="pib-search-btn" class="btn-submit-report" disabled>
-                        <i class="fa fa-search"></i> Search
-                    </button>
-                </div>
-            </div>
-
         </div>
 
-        <!-- Block pubids textarea (shown after operator+advertiser selected) -->
-        <div id="pib-block-wrap" style="display:none;margin-top:10px;padding-top:14px;border-top:1px solid #e2e8f0;">
-            <label class="hp-filter-label">Block PubIDs <small style="color:#a0aec0;">(comma or newline separated)</small></label>
-            <textarea id="pib-pubids" class="form-control" rows="3"
-                style="font-size:13px;font-family:monospace;resize:vertical;"
-                placeholder="e.g. pub123, pub456, pub789"></textarea>
-            <div style="margin-top:10px;">
-                <button id="pib-block-btn" class="btn-submit-report" style="background:linear-gradient(135deg,#e53e3e,#c53030);">
-                    <i class="fa fa-ban"></i> Block PubIDs
-                </button>
-                <span id="pib-block-msg" style="margin-left:14px;font-size:12px;"></span>
+        <!-- Textarea + Submit (shown after operator+advertiser ready) -->
+        <div id="pib-form-wrap" style="display:none;">
+            <div class="form-group">
+                <label class="hp-filter-label">PubIDs <small style="color:#a0aec0;font-weight:400;">(comma or newline separated)</small></label>
+                <textarea id="pib-pubids" class="form-control" rows="4"
+                    style="font-size:13px;font-family:monospace;resize:vertical;"
+                    placeholder="e.g. pub123, pub456, pub789"></textarea>
             </div>
+            <button id="pib-submit-btn" class="btn-submit-report">
+                <i class="fa fa-check"></i> Submit
+            </button>
         </div>
 
     </div>
 </div>
 
-<!-- ─── Results ──────────────────────────────────────────────────────────────── -->
-<div id="pib-results" style="margin-top:16px;">
-    <div style="padding:60px;text-align:center;color:#a0aec0;">
-        <i class="fa fa-ban" style="font-size:40px;display:block;margin-bottom:12px;color:#e2e8f0;"></i>
-        Select an operator and advertiser to view blocked PubIDs.
+<!-- ─── Output Records ───────────────────────────────────────────────────────── -->
+<div id="pib-output" style="display:none;margin-top:16px;">
+    <div class="hp-card">
+        <div class="hp-card-header">
+            <h4><i class="fa fa-list-alt"></i> Output Records</h4>
+        </div>
+        <div id="pib-output-body" class="hp-card-body" style="padding:0;overflow-x:auto;"></div>
     </div>
 </div>
 
@@ -98,7 +100,7 @@ include('../includes/check_session.php');
 <?php include('../includes/footer.php'); ?>
 
 <style>
-.pib-chk { cursor:pointer; width:16px; height:16px; }
+.pib-chk { cursor:pointer; width:15px; height:15px; }
 .pib-chk:disabled { opacity:.5; cursor:not-allowed; }
 </style>
 
@@ -108,7 +110,7 @@ $(document).ready(function () {
     var currentOperator  = '';
     var currentAdvertiser = '';
 
-    // ── Load operators ────────────────────────────────────────────────────────
+    // ── Load operators on page load ───────────────────────────────────────────
     $('#pib-op-spinner').show();
     $.post('adreports/ajax.php', { action: 'campaign_blocking_operators' }, function (r) {
         $('#pib-op-spinner').hide();
@@ -127,13 +129,13 @@ $(document).ready(function () {
         $('#pib-operator').html('<option value="">-- Failed to load --</option>');
     });
 
-    // ── Operator change → load advertisers ───────────────────────────────────
+    // ── Operator change → auto-load advertisers ───────────────────────────────
     $('#pib-operator').on('change', function () {
         currentOperator   = $(this).val();
         currentAdvertiser = '';
-        $('#pib-search-btn').prop('disabled', true);
-        $('#pib-block-wrap').hide();
-        resetResults();
+        hideBanners();
+        resetOutput();
+        $('#pib-form-wrap').hide();
 
         if (!currentOperator) {
             $('#pib-advertiser').html('<option value="">-- Select Operator First --</option>').prop('disabled', true);
@@ -156,8 +158,7 @@ $(document).ready(function () {
                 });
                 $('#pib-advertiser').html(html).prop('disabled', false);
                 currentAdvertiser = 'all';
-                $('#pib-search-btn').prop('disabled', false);
-                $('#pib-block-wrap').show();
+                $('#pib-form-wrap').show();
             } else {
                 $('#pib-advertiser').html('<option value="">-- No advertisers found --</option>').prop('disabled', true);
             }
@@ -169,34 +170,62 @@ $(document).ready(function () {
 
     $('#pib-advertiser').on('change', function () {
         currentAdvertiser = $(this).val();
-        $('#pib-search-btn').prop('disabled', !currentAdvertiser);
-        resetResults();
+        resetOutput();
+        hideBanners();
     });
 
-    function resetResults() {
-        $('#pib-results').html(
-            '<div style="padding:60px;text-align:center;color:#a0aec0;">'
-          + '<i class="fa fa-ban" style="font-size:40px;display:block;margin-bottom:12px;color:#e2e8f0;"></i>'
-          + 'Select an operator and advertiser to view blocked PubIDs.</div>'
-        );
-    }
-
-    // ── Search ────────────────────────────────────────────────────────────────
-    $('#pib-search-btn').on('click', doSearch);
-
-    function doSearch() {
+    // ── Submit: save pubids THEN load output records ──────────────────────────
+    $('#pib-submit-btn').on('click', function () {
         currentOperator   = $('#pib-operator').val();
         currentAdvertiser = $('#pib-advertiser').val();
-        if (!currentOperator || !currentAdvertiser) { alert('Please select operator and advertiser.'); return; }
+        var raw = $('#pib-pubids').val().trim();
 
-        var $btn = $('#pib-search-btn');
-        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
+        hideBanners();
 
-        $('#pib-results').html(
-            '<div style="padding:60px;text-align:center">'
-          + '<i class="fa fa-refresh" style="font-size:34px;color:#667eea;display:inline-block;'
+        if (!currentOperator || !currentAdvertiser) {
+            showError('Please select operator and publisher.');
+            return;
+        }
+
+        var $btn = $(this);
+
+        // If textarea has pubids → block them first, then load output
+        // If empty → just load output records for selected operator/advertiser
+        if (raw !== '') {
+            $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Saving...');
+
+            $.post('adreports/ajax.php', {
+                action        : 'pubid_blocking_submit',
+                operator      : currentOperator,
+                advertiser_id : currentAdvertiser,
+                pubids        : raw
+            }, function (r) {
+                if (r.success) {
+                    showSuccess(r.msg || 'PubIDs blocked successfully.');
+                    $('#pib-pubids').val('');
+                } else {
+                    showError(r.error || 'Failed to save PubIDs.');
+                }
+                loadOutput();
+                $btn.prop('disabled', false).html('<i class="fa fa-check"></i> Submit');
+            }, 'json').fail(function () {
+                $btn.prop('disabled', false).html('<i class="fa fa-check"></i> Submit');
+                showError('Request failed. Please try again.');
+            });
+        } else {
+            // No pubids typed — just view output
+            loadOutput();
+        }
+    });
+
+    // ── Load output records ───────────────────────────────────────────────────
+    function loadOutput() {
+        $('#pib-output').show();
+        $('#pib-output-body').html(
+            '<div style="padding:40px;text-align:center;">'
+          + '<i class="fa fa-refresh" style="font-size:32px;color:#667eea;display:inline-block;'
           + 'animation:hp-spin 0.9s linear infinite"></i>'
-          + '<p style="color:#a0aec0;margin-top:14px;font-size:14px">Loading records...</p></div>'
+          + '<p style="color:#a0aec0;margin-top:12px;font-size:13px;">Loading records...</p></div>'
         );
 
         $.post('adreports/ajax.php', {
@@ -205,67 +234,38 @@ $(document).ready(function () {
             advertiser_id : currentAdvertiser
         }, function (r) {
             if (r.success) {
-                $('#pib-results').html(r.html);
-                bindEvents();
+                $('#pib-output-body').html(r.html);
+                bindToggle();
             } else {
-                $('#pib-results').html(
+                $('#pib-output-body').html(
                     '<div style="padding:30px;text-align:center;color:#e53e3e;">'
-                  + '<i class="fa fa-exclamation-circle" style="font-size:28px;display:block;margin-bottom:8px;"></i>'
-                  + (r.error || 'Failed to load.') + '</div>'
+                  + (r.error || 'Failed to load records.') + '</div>'
                 );
             }
-        }, 'json')
-        .fail(function () {
-            $('#pib-results').html('<div style="padding:30px;text-align:center;color:#e53e3e;">Request failed.</div>');
-        })
-        .always(function () {
-            $btn.prop('disabled', false).html('<i class="fa fa-search"></i> Search');
+        }, 'json').fail(function () {
+            $('#pib-output-body').html(
+                '<div style="padding:30px;text-align:center;color:#e53e3e;">Request failed.</div>'
+            );
         });
     }
 
-    // ── Block PubIDs ──────────────────────────────────────────────────────────
-    $('#pib-block-btn').on('click', function () {
-        var raw = $('#pib-pubids').val().trim();
-        if (!raw) { $('#pib-block-msg').css('color','#c53030').text('Please enter at least one PubID.'); return; }
+    function resetOutput() {
+        $('#pib-output').hide();
+        $('#pib-output-body').html('');
+    }
 
-        var $btn = $(this);
-        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Blocking...');
-        $('#pib-block-msg').text('');
-
-        $.post('adreports/ajax.php', {
-            action        : 'pubid_blocking_submit',
-            operator      : currentOperator,
-            advertiser_id : currentAdvertiser,
-            pubids        : raw
-        }, function (r) {
-            $btn.prop('disabled', false).html('<i class="fa fa-ban"></i> Block PubIDs');
-            if (r.success) {
-                $('#pib-block-msg').css('color','#276749').text(r.msg || 'Done.');
-                $('#pib-pubids').val('');
-                doSearch();
-            } else {
-                $('#pib-block-msg').css('color','#c53030').text(r.error || 'Failed.');
-            }
-        }, 'json').fail(function () {
-            $btn.prop('disabled', false).html('<i class="fa fa-ban"></i> Block PubIDs');
-            $('#pib-block-msg').css('color','#c53030').text('Request failed.');
-        });
-    });
-
-    // ── Bind events after table renders ──────────────────────────────────────
-    function bindEvents() {
-
-        // Total Block toggle
+    // ── Checkbox toggle (Total Block) ─────────────────────────────────────────
+    function bindToggle() {
         $(document).off('change.pib').on('change.pib', '.pib-chk', function () {
             var $chk   = $(this);
             var id     = $chk.data('id');
             var toggle = $chk.prop('checked') ? 'unblock' : 'block';
             $chk.prop('disabled', true);
             $.post('adreports/ajax.php', {
-                action         : 'pubid_blocking_toggle',
-                operator       : currentOperator,
-                pub_blocking_id: id,
-                toggle         : toggle
+                action          : 'pubid_blocking_toggle',
+                operator        : currentOperator,
+                pub_blocking_id : id,
+                toggle          : toggle
             }, function (r) {
                 $chk.prop('disabled', false);
                 if (!r.success) {
@@ -280,5 +280,8 @@ $(document).ready(function () {
         });
     }
 
+    function showSuccess(msg) { $('#pib-success-msg').text(msg); $('#pib-success').show(); }
+    function showError(msg)   { $('#pib-error-msg').text(msg);   $('#pib-error').show();   }
+    function hideBanners()    { $('#pib-success, #pib-error').hide(); }
 });
 </script>

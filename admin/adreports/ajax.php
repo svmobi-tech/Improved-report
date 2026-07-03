@@ -1217,6 +1217,11 @@ switch ($action) {
     case 'add_operator_check_name':            action_add_operator_check_name($conn);            break;
     case 'add_operator_check_code':            action_add_operator_check_code($conn);            break;
     case 'add_operator_submit':                action_add_operator_submit($conn);                break;
+    case 'pubid_blocking_advertisers':         action_pubid_blocking_advertisers($conn);         break;
+    case 'pubid_blocking_submit':              action_pubid_blocking_submit($conn);              break;
+    case 'pubid_blocking_load':                action_pubid_blocking_load($conn);                break;
+    case 'pubid_blocking_toggle':              action_pubid_blocking_toggle($conn);              break;
+    case 'operator_blocking_toggle':           action_operator_blocking_toggle($conn);           break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
@@ -2951,3 +2956,249 @@ function action_add_operator_submit(PDO $conn): void
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: pubid_blocking_advertisers
+// POST: operator → returns advertisers for that operator
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_pubid_blocking_advertisers(PDO $conn): void
+{
+    $operator = trim($_POST['operator'] ?? '');
+    if (!$operator) {
+        echo json_encode(['success' => false, 'error' => 'Missing operator']);
+        return;
+    }
+    try {
+        $st = $conn->prepare(
+            "SELECT a.advertiser_id, a.advertiser_name
+             FROM commondb.advertiser_tbl a
+             INNER JOIN commondb.operator_tbl o ON a.operator = o.operator_id
+             WHERE o.operator = ?
+             ORDER BY a.advertiser_name ASC"
+        );
+        $st->execute([$operator]);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'advertisers' => $rows]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: pubid_blocking_submit
+// POST: operator, advertiser_id, pubids (raw textarea) → INSERT/UPDATE pub_blocking_tbl
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_pubid_blocking_submit(PDO $conn): void
+{
+    $operator   = trim($_POST['operator']      ?? '');
+    $advId      = trim($_POST['advertiser_id'] ?? '');
+    $raw        = trim($_POST['pubids']        ?? '');
+    $product    = 'glamour';
+
+    if (!$operator || !$advId || $raw === '') {
+        echo json_encode(['success' => false, 'error' => 'Missing parameters']);
+        return;
+    }
+
+    // Parse comma/newline separated pubids
+    $pubids = array_filter(array_map('trim', preg_split('/[\s,]+/', $raw)));
+    if (empty($pubids)) {
+        echo json_encode(['success' => false, 'error' => 'No valid PubIDs found']);
+        return;
+    }
+
+    $logdb = logDbName($operator, $product);
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => "Database {$logdb} not found"]);
+        return;
+    }
+
+    $advIdParam = ($advId === 'all') ? null : (int)$advId;
+
+    try {
+        $blocked = 0;
+        foreach ($pubids as $pub) {
+            // Check if row exists
+            $stChk = $conn->prepare(
+                "SELECT pub_blocking_id FROM {$logdb}.pub_blocking_tbl WHERE pubid = ? LIMIT 1"
+            );
+            $stChk->execute([$pub]);
+            $existing = $stChk->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing) {
+                $stUpd = $conn->prepare(
+                    "UPDATE {$logdb}.pub_blocking_tbl SET pubid_isactive = 0, advertiser_id = ?
+                     WHERE pub_blocking_id = ?"
+                );
+                $stUpd->execute([$advIdParam, $existing['pub_blocking_id']]);
+            } else {
+                $stIns = $conn->prepare(
+                    "INSERT INTO {$logdb}.pub_blocking_tbl (pubid, advertiser_id, pubid_isactive)
+                     VALUES (?, ?, 0)"
+                );
+                $stIns->execute([$pub, $advIdParam]);
+            }
+            $blocked++;
+        }
+        echo json_encode(['success' => true, 'msg' => "{$blocked} PubID(s) blocked successfully."]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: pubid_blocking_load
+// POST: operator, advertiser_id → HTML table of blocked pubids
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_pubid_blocking_load(PDO $conn): void
+{
+    $operator   = trim($_POST['operator']      ?? '');
+    $advId      = trim($_POST['advertiser_id'] ?? '');
+    $product    = 'glamour';
+
+    if (!$operator || !$advId) {
+        echo json_encode(['success' => false, 'error' => 'Missing parameters']);
+        return;
+    }
+
+    $logdb = logDbName($operator, $product);
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => "Database {$logdb} not found"]);
+        return;
+    }
+
+    try {
+        if ($advId === 'all') {
+            $st = $conn->prepare(
+                "SELECT p.pub_blocking_id, p.pubid, p.pubid_isactive,
+                        COALESCE(a.advertiser_name, 'N/A') AS advertiser_name
+                 FROM {$logdb}.pub_blocking_tbl p
+                 LEFT JOIN commondb.advertiser_tbl a ON a.advertiser_id = p.advertiser_id
+                 ORDER BY p.pub_blocking_id DESC"
+            );
+            $st->execute();
+        } else {
+            $st = $conn->prepare(
+                "SELECT p.pub_blocking_id, p.pubid, p.pubid_isactive,
+                        COALESCE(a.advertiser_name, 'N/A') AS advertiser_name
+                 FROM {$logdb}.pub_blocking_tbl p
+                 LEFT JOIN commondb.advertiser_tbl a ON a.advertiser_id = p.advertiser_id
+                 WHERE p.advertiser_id = ?
+                 ORDER BY p.pub_blocking_id DESC"
+            );
+            $st->execute([(int)$advId]);
+        }
+
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        // For each pubid also check pub_camp_blocking_tbl
+        $campBlocked = [];
+        foreach ($rows as $r) {
+            $stCamp = $conn->prepare(
+                "SELECT COUNT(*) FROM {$logdb}.pub_camp_blocking_tbl WHERE pub = ? LIMIT 1"
+            );
+            $stCamp->execute([$r['pubid']]);
+            $campBlocked[$r['pubid']] = ((int)$stCamp->fetchColumn() > 0);
+        }
+
+        ob_start();
+        if (empty($rows)) {
+            echo '<div style="padding:40px;text-align:center;color:#a0aec0;">'
+               . '<i class="fa fa-check-circle" style="font-size:36px;display:block;margin-bottom:10px;color:#c6f6d5;"></i>'
+               . 'No blocked PubIDs found for this selection.</div>';
+        } else {
+            echo '<table class="table table-striped table-bordered" style="margin-bottom:0;font-size:13px;">'
+               . '<thead><tr style="background:#4a5568;color:#fff;">'
+               . '<th style="padding:8px 12px;">Advertiser</th>'
+               . '<th style="padding:8px 12px;">PubID</th>'
+               . '<th style="padding:8px 12px;text-align:center;">Total Block</th>'
+               . '<th style="padding:8px 12px;text-align:center;">Campaign wise Block</th>'
+               . '</tr></thead><tbody>';
+
+            foreach ($rows as $r) {
+                $isBlocked    = ($r['pubid_isactive'] == 0);
+                $isCampBlocked = !empty($campBlocked[$r['pubid']]);
+                echo '<tr>'
+                   . '<td style="padding:7px 12px;">' . htmlspecialchars($r['advertiser_name']) . '</td>'
+                   . '<td style="padding:7px 12px;font-family:monospace;font-size:12px;">' . htmlspecialchars($r['pubid']) . '</td>'
+                   . '<td style="padding:7px 12px;text-align:center;">'
+                   . '<input type="checkbox" class="pib-chk" data-id="' . (int)$r['pub_blocking_id'] . '"'
+                   . ($isBlocked ? ' checked' : '') . '>'
+                   . '</td>'
+                   . '<td style="padding:7px 12px;text-align:center;">'
+                   . '<input type="checkbox" class="pib-camp-chk" data-pubid="' . htmlspecialchars($r['pubid']) . '"'
+                   . ($isCampBlocked ? ' checked' : '') . ' disabled title="Campaign wise block">'
+                   . '</td>'
+                   . '</tr>';
+            }
+            echo '</tbody></table>';
+        }
+        $html = ob_get_clean();
+        echo json_encode(['success' => true, 'html' => $html]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: pubid_blocking_toggle
+// POST: operator, pub_blocking_id, toggle(block|unblock) → UPDATE pubid_isactive
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_pubid_blocking_toggle(PDO $conn): void
+{
+    $operator = trim($_POST['operator']        ?? '');
+    $id       = (int)($_POST['pub_blocking_id'] ?? 0);
+    $toggle   = trim($_POST['toggle']           ?? '');
+    $product  = 'glamour';
+
+    if (!$operator || !$id || !in_array($toggle, ['block', 'unblock'])) {
+        echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+        return;
+    }
+
+    $logdb  = logDbName($operator, $product);
+    $active = ($toggle === 'unblock') ? 1 : 0;
+
+    try {
+        $st = $conn->prepare(
+            "UPDATE {$logdb}.pub_blocking_tbl SET pubid_isactive = ? WHERE pub_blocking_id = ?"
+        );
+        $st->execute([$active, $id]);
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: operator_blocking_toggle
+// POST: operator_id, toggle(check|uncheck) → UPDATE commondb.operator_tbl isactive
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_operator_blocking_toggle(PDO $conn): void
+{
+    $opId   = (int)($_POST['operator_id'] ?? 0);
+    $toggle = trim($_POST['toggle']       ?? '');
+
+    if (!$opId || !in_array($toggle, ['check', 'uncheck'])) {
+        echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+        return;
+    }
+
+    $isactive = ($toggle === 'check') ? 1 : 0;
+
+    try {
+        $st = $conn->prepare(
+            "UPDATE commondb.operator_tbl SET isactive = ? WHERE operator_id = ?"
+        );
+        $st->execute([$isactive, $opId]);
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}

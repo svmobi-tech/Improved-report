@@ -143,9 +143,10 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
                          || ($currentDir === 'adreports' && in_array($currentPage, ['campaign_capping.php', 'camp_capping.php']))
                            ? 'open' : '';
       $pubSetOpen         = ($currentDir === 'publisher_settings' && in_array($currentPage, $pubSetPages)) ? 'open' : '';
-      $adNetSettingsOpen  = in_array($currentPage, ['new_config.php', 'add_operator.php']) ? 'open' : '';
+      $adNetSettingsOpen  = in_array($currentPage, ['new_config.php', 'add_operator.php', 'pubid_blocking.php', 'operator_setting.php']) ? 'open' : '';
       $adreportsOpen      = ($currentDir === 'adreports' && in_array($currentPage, $adreportsPages))
                          || $currentPage === 'counter_reset.php'
+                         || ($currentDir === 'publisher_settings' && $currentPage === 'pubid_blocking.php')
                          || $campOpen === 'open'
                          || $pubSetOpen === 'open'
                          || $adNetSettingsOpen === 'open'
@@ -187,6 +188,12 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
             </li>
             <li class="<?php echo $currentPage === 'add_operator.php' ? 'active' : ''; ?>">
               <a href="add_operator.php"><i class="fa fa-plus-circle"></i> Add Operator</a>
+            </li>
+            <li class="<?php echo ($currentPage === 'pubid_blocking.php' && $currentDir === 'publisher_settings') ? 'active' : ''; ?>">
+              <a href="publisher_settings/pubid_blocking.php"><i class="fa fa-ban"></i> PubID wise Blocking</a>
+            </li>
+            <li class="<?php echo $currentPage === 'operator_setting.php' ? 'active' : ''; ?>">
+              <a href="operator_setting.php"><i class="fa fa-toggle-on"></i> Operator Blocking</a>
             </li>
           </ul>
         </li>
