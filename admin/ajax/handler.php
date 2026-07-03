@@ -2501,7 +2501,6 @@ function action_dashboard_data(mysqli $con): void
             cbsent,
             digiinvest   * toinr AS digiinvest,
             revenueshare * toinr AS revenueshare,
-            g.ptotalamount       AS lastmonthrevenue,
             fixcost
         FROM (
             SELECT country,
@@ -2536,12 +2535,6 @@ function action_dashboard_data(mysqli $con): void
             GROUP BY country
         ) e
         INNER JOIN (SELECT * FROM {$report}.currency) f ON f.country = e.country
-        LEFT JOIN (
-            SELECT country, SUM(ptotalamount) AS ptotalamount
-            FROM {$report}.dashboard
-            WHERE date >= '{$laststartdate}' AND date <= '{$lastenddate}'
-            GROUP BY country
-        ) g ON g.country = e.country
         WHERE totalcount > 0
         ORDER BY country
     ";
@@ -2557,14 +2550,29 @@ function action_dashboard_data(mysqli $con): void
         $rows[] = $row;
     }
 
-    $plasttotalamount = 0.0;
-    $res3 = mysqli_query($con,
-        "SELECT SUM(ptotalamount) AS plasttotalamount
-         FROM {$report}.dashboard
-         WHERE date >= '{$laststartdate}' AND date <= '{$lastenddate}'"
-    );
-    if ($res3 && ($r3 = mysqli_fetch_assoc($res3))) {
-        $plasttotalamount = (float)($r3['plasttotalamount'] ?? 0);
+    // Get last month's revenue per country from mainreport (always has data, unlike dashboard table)
+    $lm_sql = "
+        SELECT lm.country,
+               SUM(lm.totalamount * cur.toinr) AS lastmonthrevenue
+        FROM (
+            SELECT country, operator, SUM(totalamount) AS totalamount
+            FROM {$report}.mainreport
+            WHERE advertiser = '0'
+              AND Date >= '{$laststartdate}' AND Date <= '{$lastenddate}'
+              AND operator NOT IN ({$excl_sql})
+            GROUP BY country, operator
+        ) lm
+        INNER JOIN {$report}.currency cur ON cur.country = lm.country
+        GROUP BY lm.country
+    ";
+    $lm_res = mysqli_query($con, $lm_sql);
+    $lastMonthByCountry = [];
+    $plasttotalamount   = 0.0;
+    if ($lm_res) {
+        while ($lmrow = mysqli_fetch_assoc($lm_res)) {
+            $lastMonthByCountry[$lmrow['country']] = (float)$lmrow['lastmonthrevenue'];
+            $plasttotalamount += (float)$lmrow['lastmonthrevenue'];
+        }
     }
 
     if (empty($rows)) {
@@ -2583,6 +2591,10 @@ function action_dashboard_data(mysqli $con): void
     );
 
     foreach ($rows as $r) {
+        // echo 'total:'. $r['totalamount']. '<br>';
+        // echo 'eday:'. $eday. '<br>';
+        // echo 'date1:'. $date1;
+        // exit;
         $totalamt  = (float)$r['totalamount']   / $devide;
         $digitin   = (float)$r['digiinvest']    / $devide;
         $revenue   = (float)$r['revenueshare']  / $devide;
@@ -2592,9 +2604,13 @@ function action_dashboard_data(mysqli $con): void
         $pdigitin  = ($eday > 0 && $date1 > 0) ? $digitin  * $eday / $date1 : 0;
         $prevenue  = ($eday > 0 && $date1 > 0) ? $revenue  * $eday / $date1 : 0;
         $pprofit   = ($eday > 0 && $date1 > 0) ? $profit   * $eday / $date1 - $fixcost : 0;
-        $mm        = (float)($r['lastmonthrevenue'] ?? 0) / $devide;
-        $growth    = $ptotal > 0 ? ($ptotal - $mm) / $ptotal * 100 : 0;
-
+        $mm        = ($lastMonthByCountry[$r['country']] ?? 0.0) / $devide;
+        $growth    = $mm > 0 ? ($ptotal - $mm) / $mm * 100 : ($ptotal > 0 ? 100 : 0);
+// echo 'pre:' .$ptotal . '<br>';
+// echo 'mm:' .$mm.'<br>';
+// echo 'growth:' .$growth.'<br>';
+// echo 'lastDay:' .$r['lastmonthrevenue'].'<br>';
+// exit;
         $computed[] = compact(
             'totalamt','digitin','revenue','fixcost','profit',
             'ptotal','pdigitin','prevenue','pprofit','growth'
@@ -2625,8 +2641,10 @@ function action_dashboard_data(mysqli $con): void
         $totals['pprofit']      += $pprofit;
     }
 
-    $total_growth = $totals['ptotal'] > 0
-        ? ($totals['ptotal'] - $plasttotalamount) / $totals['ptotal'] * 100 : 0;
+    $plasttotalamount /= $devide;
+    $total_growth = $plasttotalamount > 0
+        ? ($totals['ptotal'] - $plasttotalamount) / $plasttotalamount * 100
+        : ($totals['ptotal'] > 0 ? 100 : 0);
     ?>
 <div class="hp-card">
     <div class="hp-card-header">
