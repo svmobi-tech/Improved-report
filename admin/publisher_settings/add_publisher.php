@@ -34,7 +34,7 @@ if ($conn) {
 <?php include('../includes/top_navigation.php'); ?>
 <div class="hp-content">
 
-<div class="hp-card" style="max-width:860px;">
+<div class="hp-card">
     <div class="hp-card-header">
         <h4><i class="fa fa-user-plus"></i> Add Publisher</h4>
     </div>
@@ -56,9 +56,9 @@ if ($conn) {
                     <input type="checkbox" id="ap-op-all"> <span style="font-size:12px;color:#4a5568;">Select All</span>
                 </label>
             </label>
-            <div style="display:flex;flex-wrap:wrap;gap:10px 22px;">
+            <div style="display:flex;flex-wrap:wrap;gap:6px 18px;">
                 <?php foreach ($operators as $op): ?>
-                    <label style="cursor:pointer;font-size:13px;white-space:nowrap;">
+                    <label style="cursor:pointer;font-size:12px;white-space:nowrap;color:#2d3748;">
                         <input type="checkbox" class="ap-op-chk" value="<?= (int)$op['operator_id'] ?>">
                         <?= htmlspecialchars($op['operator']) ?>
                     </label>
@@ -121,7 +121,7 @@ if ($conn) {
 </div>
 
 <!-- ── Results Card ─────────────────────────────────────────────────────────── -->
-<div id="ap-results" style="display:none;margin-top:16px;max-width:860px;">
+<div id="ap-results" style="display:none;margin-top:16px;">
     <div class="hp-card">
         <div class="hp-card-header">
             <h4><i class="fa fa-check-circle"></i> Insert Results</h4>

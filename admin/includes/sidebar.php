@@ -136,18 +136,20 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
       </ul>
     </li>
     <?php
-      $adreportsPages = ['all_in_one_report.php', 'report.php', 'perform.php', 'advertiser_publisher.php', 'trend_report.php', 'pub_wise_act_dct.php', 'pending_cbs.php', 'campaign_capping.php', 'camp_capping.php'];
+      $adreportsPages = ['all_in_one_report.php', 'report.php', 'perform.php', 'advertiser_publisher.php', 'trend_report.php', 'pub_wise_act_dct.php', 'pending_cbs.php', 'campaign_capping.php', 'camp_capping.php', 'new_config.php'];
       $campPages      = ['add_campaign.php', 'campaign_blocking.php'];
-      $pubSetPages    = ['add_publisher.php', 'import_pub.php'];
-      $campOpen       = ($currentDir === 'campaign_settings' && in_array($currentPage, $campPages))
-                     || ($currentDir === 'adreports' && in_array($currentPage, ['campaign_capping.php', 'camp_capping.php']))
-                       ? 'open' : '';
-      $pubSetOpen     = ($currentDir === 'publisher_settings'  && in_array($currentPage, $pubSetPages)) ? 'open' : '';
-      $adreportsOpen  = ($currentDir === 'adreports' && in_array($currentPage, $adreportsPages))
-                     || $currentPage === 'counter_reset.php'
-                     || $campOpen === 'open'
-                     || $pubSetOpen === 'open'
-                     ? 'open' : '';
+      $pubSetPages    = ['add_publisher.php', 'publisher_blocking.php', 'pub_camp_blocking.php'];
+      $campOpen           = ($currentDir === 'campaign_settings' && in_array($currentPage, $campPages))
+                         || ($currentDir === 'adreports' && in_array($currentPage, ['campaign_capping.php', 'camp_capping.php']))
+                           ? 'open' : '';
+      $pubSetOpen         = ($currentDir === 'publisher_settings' && in_array($currentPage, $pubSetPages)) ? 'open' : '';
+      $adNetSettingsOpen  = in_array($currentPage, ['new_config.php', 'add_operator.php']) ? 'open' : '';
+      $adreportsOpen      = ($currentDir === 'adreports' && in_array($currentPage, $adreportsPages))
+                         || $currentPage === 'counter_reset.php'
+                         || $campOpen === 'open'
+                         || $pubSetOpen === 'open'
+                         || $adNetSettingsOpen === 'open'
+                         ? 'open' : '';
     ?>
     <li class="has-submenu <?php echo $adreportsOpen; ?>">
       <a href="#"><i class="fa fa-th"></i> AdNetwork Reports</a>
@@ -176,6 +178,18 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
         <li class="<?php echo ($currentPage === 'pending_cbs.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
           <a href="adreports/pending_cbs.php"><i class="fa fa-clock-o"></i> Pending Callbacks</a>
         </li>
+        <!-- Settings nested submenu -->
+        <li class="has-submenu <?php echo $adNetSettingsOpen; ?>">
+          <a href="#"><i class="fa fa-wrench"></i> Settings</a>
+          <ul class="hp-submenu">
+            <li class="<?php echo $currentPage === 'new_config.php' ? 'active' : ''; ?>">
+              <a href="new_config.php"><i class="fa fa-database"></i> New Configuration</a>
+            </li>
+            <li class="<?php echo $currentPage === 'add_operator.php' ? 'active' : ''; ?>">
+              <a href="add_operator.php"><i class="fa fa-plus-circle"></i> Add Operator</a>
+            </li>
+          </ul>
+        </li>
         <!-- Campaign Settings nested submenu -->
         <li class="has-submenu <?php echo $campOpen; ?>">
           <a href="#"><i class="fa fa-cog"></i> Campaign Settings</a>
@@ -201,8 +215,11 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
             <li class="<?php echo ($currentPage === 'add_publisher.php' && $currentDir === 'publisher_settings') ? 'active' : ''; ?>">
               <a href="publisher_settings/add_publisher.php"><i class="fa fa-user-plus"></i> Add Publisher</a>
             </li>
-            <li>
-              <a href="/adnetwork_admin/import_pub.php" target="_blank"><i class="fa fa-upload"></i> Import Publisher</a>
+            <li class="<?php echo ($currentPage === 'publisher_blocking.php' && $currentDir === 'publisher_settings') ? 'active' : ''; ?>">
+              <a href="publisher_settings/publisher_blocking.php"><i class="fa fa-ban"></i> Publisher Blocking</a>
+            </li>
+            <li class="<?php echo ($currentPage === 'pub_camp_blocking.php' && $currentDir === 'publisher_settings') ? 'active' : ''; ?>">
+              <a href="publisher_settings/pub_camp_blocking.php"><i class="fa fa-shield"></i> Campaign Wise Blocking</a>
             </li>
           </ul>
         </li>
