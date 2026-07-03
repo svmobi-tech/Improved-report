@@ -46,6 +46,10 @@ switch ($action) {
     case 'gamezop_partners':         action_gamezop_partners($con);         break;
     case 'gamezop_report_load':         action_gamezop_report_load($con);         break;
     case 'gamezop_all_partners_report': action_gamezop_all_partners_report($con); break;
+    case 'campaign_blocking_operators': action_campaign_blocking_operators($con); break;
+    case 'campaign_blocking_load':      action_campaign_blocking_load($con);      break;
+    case 'campaign_blocking_toggle':    action_campaign_blocking_toggle($con);    break;
+    case 'campaign_blocking_update':    action_campaign_blocking_update($con);    break;
     default:
         http_response_code(400);
         echo json_encode(['error' => 'Unknown action: ' . htmlspecialchars($action)]);

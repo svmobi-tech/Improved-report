@@ -182,7 +182,7 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
               <a href="campaign_settings/add_campaign.php"><i class="fa fa-plus-circle"></i> Add Campaign</a>
             </li>
             <li>
-              <a href="/adnetwork_admin/campaign_blocking.php" target="_blank"><i class="fa fa-ban"></i> Campaign Blocking</a>
+              <a href="campaign_settings/campaign_blocking.php"><i class="fa fa-ban"></i> Campaign Blocking</a>
             </li>
             <li>
               <a href="/adnetwork_admin/campaign_automation.php" target="_blank"><i class="fa fa-magic"></i> Campaign Automation</a>

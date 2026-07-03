@@ -1192,8 +1192,12 @@ switch ($action) {
     case 'counter_reset':            action_counter_reset($conn);            break;
     case 'pending_cbs_search':       action_pending_cbs_search($conn);       break;
     case 'pending_cbs_push':         action_pending_cbs_push($conn);         break;
-    case 'campaign_add':             action_campaign_add($conn);             break;
-    case 'publisher_add':            action_publisher_add($conn);            break;
+    case 'campaign_add':                action_campaign_add($conn);                break;
+    case 'publisher_add':               action_publisher_add($conn);               break;
+    case 'campaign_blocking_operators': action_campaign_blocking_operators($conn); break;
+    case 'campaign_blocking_load':      action_campaign_blocking_load($conn);      break;
+    case 'campaign_blocking_toggle':    action_campaign_blocking_toggle($conn);    break;
+    case 'campaign_blocking_update':    action_campaign_blocking_update($conn);    break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
@@ -1463,6 +1467,246 @@ function action_campaign_add(PDO $conn): void
     $ok  = count(array_filter($results, function ($r) { return $r['status'] === 'ok'; }));
     $err = count($results) - $ok;
     echo json_encode(['success' => true, 'inserted' => $ok, 'failed' => $err, 'results' => $results]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Campaign Blocking — operators list
+// Returns: {success, operators: [{operator_id, operator}]}
+// ─────────────────────────────────────────────────────────────────────────────
+function action_campaign_blocking_operators(PDO $conn): void
+{
+    $res = $conn->query("SELECT operator_id, operator FROM commondb.operator_tbl ORDER BY operator ASC");
+    $ops = $res ? $res->fetchAll(PDO::FETCH_ASSOC) : [];
+    echo json_encode(['success' => true, 'operators' => $ops]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Campaign Blocking — load campaign table for an operator
+// POST: operator_id, operator, browser, os
+// Returns: {success, html}  or  {success:false, error}
+// ─────────────────────────────────────────────────────────────────────────────
+function action_campaign_blocking_load(PDO $conn): void
+{
+    $operatorId = (int)($_POST['operator_id'] ?? 0);
+    $operator   = strtolower(trim($_POST['operator'] ?? ''));
+    $browser    = trim($_POST['browser'] ?? 'all');
+    $os         = trim($_POST['os']      ?? 'all');
+
+    if (!$operator) { echo json_encode(['success' => false, 'error' => 'Operator is required']); return; }
+
+    $logdb = logDbName($operator, 'glamour');
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'No database found for operator: ' . $operator]); return;
+    }
+
+    $where = "WHERE campaign_operator = " . $conn->quote($operator);
+    if ($browser !== '' && $browser !== 'all') $where .= " AND campaign_browser LIKE " . $conn->quote('%' . $browser . '%');
+    if ($os      !== '' && $os      !== 'all') $where .= " AND campaign_os LIKE "      . $conn->quote('%' . $os      . '%');
+
+    $res_c = $conn->query(
+        "SELECT campaign_id, campaign_title, campaign_live, campaign_url,
+                campaign_startdatetime, campaign_enddatetime
+         FROM {$logdb}.campaign_tbl {$where} ORDER BY campaign_id ASC"
+    );
+    if (!$res_c) { echo json_encode(['success' => false, 'error' => 'Query failed']); return; }
+
+    $campaigns = $res_c->fetchAll(PDO::FETCH_ASSOC);
+    if (empty($campaigns)) {
+        echo json_encode(['success' => true, 'html' =>
+            '<div style="padding:40px;text-align:center;color:#a0aec0;">'
+          . '<i class="fa fa-inbox" style="font-size:36px;display:block;margin-bottom:12px;color:#e2e8f0;"></i>'
+          . 'No campaigns found for the selected filters.</div>'
+        ]);
+        return;
+    }
+
+    $opId = $operatorId;
+    if (!$opId) {
+        $stOp = $conn->prepare("SELECT operator_id FROM commondb.operator_tbl WHERE operator = ? LIMIT 1");
+        $stOp->execute([$operator]);
+        $opRow = $stOp->fetch(PDO::FETCH_ASSOC);
+        $opId  = $opRow ? (int)$opRow['operator_id'] : 0;
+    }
+
+    ob_start();
+    ?>
+    <div class="hp-card" style="margin-top:0;">
+        <div class="hp-card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <h4 style="margin:0;">
+                <i class="fa fa-list"></i>
+                Campaigns — <?php echo htmlspecialchars(ucfirst($operator)); ?>
+                <span style="font-weight:400;font-size:13px;color:#a0aec0;margin-left:8px;">
+                    <?php echo count($campaigns); ?> record(s)
+                </span>
+            </h4>
+            <button id="cb-url-toggle" class="btn btn-sm btn-default" style="font-size:12px;">
+                <i class="fa fa-lock"></i><span> Enable URL Edit</span>
+            </button>
+        </div>
+        <div class="hp-card-body" style="padding:0;overflow-x:auto;">
+            <table class="table table-striped table-bordered" style="margin:0;font-size:13px;min-width:900px;">
+                <thead>
+                    <tr style="background:#4a5568;color:#fff;text-align:center;">
+                        <th style="width:70px;">Camp ID</th>
+                        <th>Title</th>
+                        <th style="width:70px;">Block</th>
+                        <th>URL</th>
+                        <th style="width:100px;">Payout</th>
+                        <th style="width:220px;">Time (start/end)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($campaigns as $c):
+                    $cid     = (int)$c['campaign_id'];
+                    $blocked = ((string)$c['campaign_live'] !== '1');
+                    $time_v  = trim($c['campaign_startdatetime'] ?? '') . '/' . trim($c['campaign_enddatetime'] ?? '');
+                    $payout  = '';
+                    if ($opId) {
+                        $stPay = $conn->prepare(
+                            "SELECT payout FROM commondb.glamour_advertiser_payout_tbl
+                             WHERE campaign_id = ? AND operatorid = ?
+                             ORDER BY adpayoutid DESC LIMIT 1"
+                        );
+                        $stPay->execute([$cid, $opId]);
+                        $payRow = $stPay->fetch(PDO::FETCH_ASSOC);
+                        if ($payRow) $payout = $payRow['payout'];
+                    }
+                ?>
+                    <tr>
+                        <td style="text-align:center;font-weight:600;"><?php echo $cid; ?></td>
+                        <td><?php echo htmlspecialchars($c['campaign_title'] ?? ''); ?></td>
+                        <td style="text-align:center;">
+                            <input type="checkbox" class="cb-block-chk"
+                                   value="<?php echo $cid; ?>"
+                                   <?php echo $blocked ? 'checked' : ''; ?>
+                                   title="<?php echo $blocked ? 'Blocked — uncheck to make live' : 'Live — check to block'; ?>">
+                        </td>
+                        <td>
+                            <input type="text" class="cb-inline-input url-field"
+                                   data-field="url" data-id="<?php echo $cid; ?>"
+                                   value="<?php echo htmlspecialchars($c['campaign_url'] ?? ''); ?>"
+                                   disabled>
+                        </td>
+                        <td>
+                            <input type="text" class="cb-inline-input"
+                                   data-field="payout" data-id="<?php echo $cid; ?>"
+                                   value="<?php echo htmlspecialchars($payout); ?>"
+                                   placeholder="0.00">
+                        </td>
+                        <td>
+                            <input type="text" class="cb-inline-input"
+                                   data-field="time" data-id="<?php echo $cid; ?>"
+                                   value="<?php echo htmlspecialchars($time_v); ?>"
+                                   placeholder="HH:MM:SS/HH:MM:SS">
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php
+    echo json_encode(['success' => true, 'html' => ob_get_clean()]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Campaign Blocking — toggle block / unblock
+// POST: operator_id, operator, campaign_id, toggle (block|unblock)
+// ─────────────────────────────────────────────────────────────────────────────
+function action_campaign_blocking_toggle(PDO $conn): void
+{
+    $operator   = strtolower(trim($_POST['operator']    ?? ''));
+    $campaignId = (int)($_POST['campaign_id'] ?? 0);
+    $toggle     = trim($_POST['toggle'] ?? '');
+
+    if (!$operator || !$campaignId || !in_array($toggle, ['block', 'unblock'])) {
+        echo json_encode(['success' => false, 'error' => 'Invalid params']); return;
+    }
+
+    $logdb = logDbName($operator, 'glamour');
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'Operator DB not found']); return;
+    }
+
+    try {
+        if ($toggle === 'block') {
+            $conn->exec("UPDATE {$logdb}.campaign_tbl SET campaign_live = 0 WHERE campaign_id = {$campaignId}");
+            $conn->exec("DELETE FROM {$logdb}.running_campaign_tbl WHERE campaign_id = {$campaignId}");
+        } else {
+            $conn->exec("UPDATE {$logdb}.campaign_tbl SET campaign_live = 1 WHERE campaign_id = {$campaignId}");
+            $res = $conn->query("SELECT COALESCE(MAX(run_camp_id),0)+1 FROM {$logdb}.running_campaign_tbl");
+            $nid = $res ? (int)$res->fetchColumn() : 1;
+            $conn->exec(
+                "INSERT INTO {$logdb}.running_campaign_tbl
+                 (run_camp_id, campaign_id, run_camp_operator, run_camp_track)
+                 VALUES ({$nid}, {$campaignId}, " . $conn->quote($operator) . ", '0')"
+            );
+        }
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Campaign Blocking — inline update URL / payout / time
+// POST: operator_id, operator, campaign_id, field (url|payout|time), value
+// ─────────────────────────────────────────────────────────────────────────────
+function action_campaign_blocking_update(PDO $conn): void
+{
+    $operatorId = (int)($_POST['operator_id'] ?? 0);
+    $operator   = strtolower(trim($_POST['operator']    ?? ''));
+    $campaignId = (int)($_POST['campaign_id'] ?? 0);
+    $field      = trim($_POST['field']  ?? '');
+    $value      = trim($_POST['value']  ?? '');
+
+    if (!$operator || !$campaignId || !in_array($field, ['url', 'payout', 'time'])) {
+        echo json_encode(['success' => false, 'error' => 'Invalid params']); return;
+    }
+
+    $logdb = logDbName($operator, 'glamour');
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'Operator DB not found']); return;
+    }
+
+    try {
+        if ($field === 'url') {
+            $st = $conn->prepare("UPDATE {$logdb}.campaign_tbl SET campaign_url = ? WHERE campaign_id = ?");
+            $st->execute([$value, $campaignId]);
+
+        } elseif ($field === 'payout') {
+            $opId = $operatorId;
+            if (!$opId) {
+                $stOp = $conn->prepare("SELECT operator_id FROM commondb.operator_tbl WHERE operator = ? LIMIT 1");
+                $stOp->execute([$operator]);
+                $opRow = $stOp->fetch(PDO::FETCH_ASSOC);
+                $opId  = $opRow ? (int)$opRow['operator_id'] : 0;
+            }
+            if (!$opId) { echo json_encode(['success' => false, 'error' => 'Operator not found']); return; }
+
+            $stPay = $conn->prepare(
+                "INSERT INTO commondb.glamour_advertiser_payout_tbl
+                 (operatorid, campaign_id, payout, payout_datetime) VALUES (?,?,?,?)"
+            );
+            $stPay->execute([$opId, $campaignId, $value, date('Y-m-d H:i:s')]);
+
+            $stUpd = $conn->prepare("UPDATE {$logdb}.campaign_tbl SET campaign_price = ? WHERE campaign_id = ?");
+            $stUpd->execute([$value, $campaignId]);
+
+        } elseif ($field === 'time') {
+            $parts = explode('/', $value, 2);
+            if (count($parts) !== 2) { echo json_encode(['success' => false, 'error' => 'Format: start/end']); return; }
+            $st = $conn->prepare(
+                "UPDATE {$logdb}.campaign_tbl
+                 SET campaign_startdatetime = ?, campaign_enddatetime = ? WHERE campaign_id = ?"
+            );
+            $st->execute([trim($parts[0]), trim($parts[1]), $campaignId]);
+        }
+
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
