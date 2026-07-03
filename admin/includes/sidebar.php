@@ -136,10 +136,12 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
       </ul>
     </li>
     <?php
-      $adreportsPages = ['all_in_one_report.php', 'report.php', 'perform.php', 'advertiser_publisher.php', 'trend_report.php', 'pub_wise_act_dct.php', 'pending_cbs.php'];
-      $campPages      = ['add_campaign.php', 'campaign_blocking.php', 'campaign_automation.php', 'campaign_capping.php'];
+      $adreportsPages = ['all_in_one_report.php', 'report.php', 'perform.php', 'advertiser_publisher.php', 'trend_report.php', 'pub_wise_act_dct.php', 'pending_cbs.php', 'campaign_capping.php', 'camp_capping.php'];
+      $campPages      = ['add_campaign.php', 'campaign_blocking.php'];
       $pubSetPages    = ['add_publisher.php', 'import_pub.php'];
-      $campOpen       = ($currentDir === 'campaign_settings'   && in_array($currentPage, $campPages))   ? 'open' : '';
+      $campOpen       = ($currentDir === 'campaign_settings' && in_array($currentPage, $campPages))
+                     || ($currentDir === 'adreports' && in_array($currentPage, ['campaign_capping.php', 'camp_capping.php']))
+                       ? 'open' : '';
       $pubSetOpen     = ($currentDir === 'publisher_settings'  && in_array($currentPage, $pubSetPages)) ? 'open' : '';
       $adreportsOpen  = ($currentDir === 'adreports' && in_array($currentPage, $adreportsPages))
                      || $currentPage === 'counter_reset.php'
@@ -184,11 +186,11 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
             <li>
               <a href="campaign_settings/campaign_blocking.php"><i class="fa fa-ban"></i> Campaign Blocking</a>
             </li>
-            <li>
-              <a href="/adnetwork_admin/campaign_automation.php" target="_blank"><i class="fa fa-magic"></i> Campaign Automation</a>
+            <li class="<?php echo ($currentPage === 'campaign_capping.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
+              <a href="adreports/campaign_capping.php"><i class="fa fa-filter"></i> Campaign Capping &amp; Automation</a>
             </li>
-            <li>
-              <a href="/adnetwork_admin/campaign_capping.php" target="_blank"><i class="fa fa-filter"></i> Campaign Capping</a>
+            <li class="<?php echo ($currentPage === 'camp_capping.php' && $currentDir === 'adreports') ? 'active' : ''; ?>">
+              <a href="adreports/camp_capping.php"><i class="fa fa-sliders"></i> Campaign Capping</a>
             </li>
           </ul>
         </li>

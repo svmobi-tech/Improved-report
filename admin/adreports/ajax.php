@@ -1197,7 +1197,15 @@ switch ($action) {
     case 'campaign_blocking_operators': action_campaign_blocking_operators($conn); break;
     case 'campaign_blocking_load':      action_campaign_blocking_load($conn);      break;
     case 'campaign_blocking_toggle':    action_campaign_blocking_toggle($conn);    break;
-    case 'campaign_blocking_update':    action_campaign_blocking_update($conn);    break;
+    case 'campaign_blocking_update':       action_campaign_blocking_update($conn);       break;
+    case 'campaign_capping_get_automation':    action_campaign_capping_get_automation($conn);    break;
+    case 'campaign_capping_load':              action_campaign_capping_load($conn);              break;
+    case 'campaign_capping_update_weight':     action_campaign_capping_update_weight($conn);     break;
+    case 'campaign_capping_update_percentage': action_campaign_capping_update_percentage($conn); break;
+    case 'campaign_capping_toggle_automation': action_campaign_capping_toggle_automation($conn); break;
+    case 'camp_capping_load':                  action_camp_capping_load($conn);                  break;
+    case 'camp_capping_update':                action_camp_capping_update($conn);                break;
+    case 'camp_capping_erase':                 action_camp_capping_erase($conn);                 break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         break;
@@ -1787,4 +1795,423 @@ function action_publisher_add(PDO $conn): void
     $ok  = count(array_filter($results, function ($r) { return $r['status'] === 'ok'; }));
     $err = count($results) - $ok;
     echo json_encode(['success' => true, 'inserted' => $ok, 'failed' => $err, 'results' => $results]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: campaign_capping_load
+// Returns HTML: automation toggle + campaign weight table (manual) or % input
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_campaign_capping_load(PDO $conn): void
+{
+    $operator = trim($_POST['operator'] ?? '');
+    $type     = (int)($_POST['type']    ?? 2); // 1=Percentage, 2=Manually
+    $product  = 'glamour';
+
+    if (!$operator) {
+        echo json_encode(['success' => false, 'error' => 'Operator is required']);
+        return;
+    }
+
+    $logdb = logDbName($operator, $product);
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'Database not found for operator: ' . $operator]);
+        return;
+    }
+
+    try {
+        ob_start();
+
+        echo '<div class="hp-card" style="margin-bottom:20px;">';
+
+        if ($type === 1) {
+            // Percentage mode
+            $stPerc = $conn->prepare(
+                "SELECT camp_weightage_perc FROM {$logdb}.campaign_weightage_tbl
+                 WHERE camp_weightage_operator = ? LIMIT 1"
+            );
+            $stPerc->execute([$operator]);
+            $percRow = $stPerc->fetch(PDO::FETCH_ASSOC);
+            $percVal = $percRow ? htmlspecialchars((string)$percRow['camp_weightage_perc']) : '';
+
+            echo '<div class="hp-card-body" style="padding:20px;">'
+               . '<div style="max-width:300px;">'
+               . '<label style="font-size:13px;color:#4a5568;font-weight:600;margin-bottom:6px;display:block;">'
+               . 'Campaign Capping Percentage (%)</label>'
+               . '<div style="display:flex;align-items:center;gap:10px;">'
+               . '<input type="number" id="cc-perc-input" class="cc-weight-input"'
+               . ' style="width:120px;" value="' . $percVal . '"'
+               . ' placeholder="0" min="0" max="100" step="0.01">'
+               . '<span style="font-size:12px;color:#a0aec0;">Blur / Tab to save</span>'
+               . '</div></div></div>';
+
+        } else {
+            // Manual mode — campaign weights table
+            $stCamp = $conn->prepare(
+                "SELECT campaign_id, campaign_title, campaign_weight
+                 FROM {$logdb}.campaign_tbl
+                 WHERE campaign_operator = ?
+                 ORDER BY campaign_title ASC"
+            );
+            $stCamp->execute([$operator]);
+            $campaigns = $stCamp->fetchAll(PDO::FETCH_ASSOC);
+
+            echo '<div style="overflow-x:auto;">'
+               . '<table class="table table-striped table-bordered" id="cc-camp-table"'
+               . ' style="margin-bottom:0;font-size:13px;">'
+               . '<thead><tr style="background:#4a5568;color:#fff;text-align:center;">'
+               . '<th style="width:50px;">#</th>'
+               . '<th style="text-align:left;">Campaign</th>'
+               . '<th style="width:130px;">Weight</th>'
+               . '</tr></thead><tbody>';
+
+            if (empty($campaigns)) {
+                echo '<tr><td colspan="3" style="text-align:center;padding:20px;color:#a0aec0;">'
+                   . 'No campaigns found for this operator.</td></tr>';
+            } else {
+                $i = 1;
+                foreach ($campaigns as $c) {
+                    $cid    = (int)$c['campaign_id'];
+                    $title  = htmlspecialchars($c['campaign_title']);
+                    $weight = htmlspecialchars((string)$c['campaign_weight']);
+                    echo '<tr>'
+                       . '<td style="text-align:center;color:#718096;">' . $i . '</td>'
+                       . '<td>' . $title . '</td>'
+                       . '<td style="text-align:center;">'
+                       . '<input type="number" class="cc-weight-input"'
+                       . ' data-cid="' . $cid . '"'
+                       . ' value="' . $weight . '"'
+                       . ' placeholder="0" min="0" step="1">'
+                       . '</td></tr>';
+                    $i++;
+                }
+            }
+
+            echo '</tbody></table></div>';
+        }
+
+        echo '</div>';
+        $html = ob_get_clean();
+        echo json_encode(['success' => true, 'html' => $html]);
+
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: campaign_capping_update_weight
+// Updates campaign_tbl.campaign_weight for one campaign
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_campaign_capping_update_weight(PDO $conn): void
+{
+    $operator   = trim($_POST['operator']     ?? '');
+    $campaignId = (int)($_POST['campaign_id'] ?? 0);
+    $weight     = trim($_POST['weight']        ?? '0');
+    $product    = 'glamour';
+
+    if (!$operator || !$campaignId) {
+        echo json_encode(['success' => false, 'error' => 'Missing operator or campaign_id']);
+        return;
+    }
+
+    $logdb = logDbName($operator, $product);
+
+    try {
+        $st = $conn->prepare(
+            "UPDATE {$logdb}.campaign_tbl SET campaign_weight = ? WHERE campaign_id = ?"
+        );
+        $st->execute([$weight, $campaignId]);
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: campaign_capping_update_percentage
+// Updates campaign_weightage_tbl.camp_weightage_perc; inserts if not exists
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_campaign_capping_update_percentage(PDO $conn): void
+{
+    $operator = trim($_POST['operator'] ?? '');
+    $value    = trim($_POST['value']    ?? '0');
+    $product  = 'glamour';
+
+    if (!$operator) {
+        echo json_encode(['success' => false, 'error' => 'Operator is required']);
+        return;
+    }
+
+    $logdb = logDbName($operator, $product);
+
+    try {
+        $stCheck = $conn->prepare(
+            "SELECT camp_weightage_id FROM {$logdb}.campaign_weightage_tbl
+             WHERE camp_weightage_operator = ? LIMIT 1"
+        );
+        $stCheck->execute([$operator]);
+        $row = $stCheck->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            $st = $conn->prepare(
+                "UPDATE {$logdb}.campaign_weightage_tbl
+                 SET camp_weightage_perc = ? WHERE camp_weightage_operator = ?"
+            );
+            $st->execute([$value, $operator]);
+        } else {
+            $st = $conn->prepare(
+                "INSERT INTO {$logdb}.campaign_weightage_tbl
+                 (camp_weightage_operator, camp_weightage_perc) VALUES (?,?)"
+            );
+            $st->execute([$operator, $value]);
+        }
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: campaign_capping_toggle_automation
+// Toggles campaign_type_tbl.camp_type (1=on, 0=off); inserts if not exists
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_campaign_capping_toggle_automation(PDO $conn): void
+{
+    $operator = trim($_POST['operator'] ?? '');
+    $enable   = (int)($_POST['enable']   ?? 0);
+    $product  = 'glamour';
+
+    if (!$operator) {
+        echo json_encode(['success' => false, 'error' => 'Operator is required']);
+        return;
+    }
+
+    $logdb    = logDbName($operator, $product);
+    $campType = $enable ? 1 : 0;
+
+    try {
+        $stCheck = $conn->prepare(
+            "SELECT camp_type_id FROM {$logdb}.campaign_type_tbl WHERE camp_operator = ? LIMIT 1"
+        );
+        $stCheck->execute([$operator]);
+        $row = $stCheck->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            $st = $conn->prepare(
+                "UPDATE {$logdb}.campaign_type_tbl SET camp_type = ? WHERE camp_operator = ?"
+            );
+            $st->execute([$campType, $operator]);
+        } else {
+            $st = $conn->prepare(
+                "INSERT INTO {$logdb}.campaign_type_tbl (camp_operator, camp_type) VALUES (?,?)"
+            );
+            $st->execute([$operator, $campType]);
+        }
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: campaign_capping_get_automation
+// Returns current automation status for an operator (lightweight — no HTML)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_campaign_capping_get_automation(PDO $conn): void
+{
+    $operator = trim($_POST['operator'] ?? '');
+    $product  = 'glamour';
+
+    if (!$operator) {
+        echo json_encode(['success' => false, 'error' => 'Operator is required']);
+        return;
+    }
+
+    $logdb = logDbName($operator, $product);
+
+    try {
+        $st = $conn->prepare(
+            "SELECT camp_type FROM {$logdb}.campaign_type_tbl WHERE camp_operator = ? LIMIT 1"
+        );
+        $st->execute([$operator]);
+        $row    = $st->fetch(PDO::FETCH_ASSOC);
+        $isAuto = $row && (int)$row['camp_type'] === 1;
+        echo json_encode(['success' => true, 'automation' => $isAuto]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: camp_capping_load
+// Loads campaigns with capping_count from capping_tbl (LEFT JOIN)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_camp_capping_load(PDO $conn): void
+{
+    $operator = trim($_POST['operator'] ?? '');
+    $product  = 'glamour';
+
+    if (!$operator) {
+        echo json_encode(['success' => false, 'error' => 'Operator is required']);
+        return;
+    }
+
+    $logdb = logDbName($operator, $product);
+    if (!dbExists($conn, $logdb)) {
+        echo json_encode(['success' => false, 'error' => 'Database not found for operator: ' . $operator]);
+        return;
+    }
+
+    try {
+        $st = $conn->prepare(
+            "SELECT c.campaign_id, c.campaign_title, ct.capping_count
+             FROM {$logdb}.campaign_tbl c
+             LEFT JOIN {$logdb}.capping_tbl ct ON ct.campaign_id = c.campaign_id
+             WHERE c.campaign_operator = ?
+             ORDER BY c.campaign_title ASC"
+        );
+        $st->execute([$operator]);
+        $campaigns = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        ob_start();
+        echo '<div class="hp-card" style="margin-bottom:20px;"><div style="overflow-x:auto;">'
+           . '<table class="table table-striped table-bordered" style="margin-bottom:0;font-size:13px;">'
+           . '<thead><tr style="background:#4a5568;color:#fff;text-align:center;">'
+           . '<th style="width:50px;">#</th>'
+           . '<th style="text-align:left;">Campaign</th>'
+           . '<th style="width:130px;">Capping</th>'
+           . '<th style="width:90px;">'
+           . '<label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:400;margin:0;">'
+           . '<input type="checkbox" id="cc2-chk-all" style="cursor:pointer;"> All</label>'
+           . '</th>'
+           . '</tr></thead><tbody>';
+
+        if (empty($campaigns)) {
+            echo '<tr><td colspan="4" style="text-align:center;padding:20px;color:#a0aec0;">No campaigns found.</td></tr>';
+        } else {
+            $i = 1;
+            foreach ($campaigns as $c) {
+                $cid   = (int)$c['campaign_id'];
+                $title = htmlspecialchars($c['campaign_title']);
+                $cap   = htmlspecialchars((string)($c['capping_count'] ?? ''));
+                echo '<tr>'
+                   . '<td style="text-align:center;color:#718096;">' . $i . '</td>'
+                   . '<td>' . $title . '</td>'
+                   . '<td style="text-align:center;">'
+                   . '<input type="number" class="cc2-cap-input" data-cid="' . $cid . '" value="' . $cap . '" placeholder="0" min="0" step="1">'
+                   . '</td>'
+                   . '<td style="text-align:center;">'
+                   . '<input type="checkbox" class="cc2-del-chk" value="' . $cid . '" style="width:16px;height:16px;cursor:pointer;">'
+                   . '</td></tr>';
+                $i++;
+            }
+        }
+
+        echo '</tbody></table></div>';
+
+        // Erase button below table
+        echo '<div style="padding:12px 16px;border-top:1px solid #e2e8f0;">'
+           . '<button id="cc2-erase-btn" class="btn btn-danger btn-sm">'
+           . '<i class="fa fa-trash-o"></i> Erase from Capping</button>'
+           . '<span style="font-size:12px;color:#a0aec0;margin-left:12px;">Check rows above then click Erase to remove from capping_tbl</span>'
+           . '</div></div>';
+
+        $html = ob_get_clean();
+        echo json_encode(['success' => true, 'html' => $html]);
+
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: camp_capping_update
+// Updates capping_tbl.capping_count for one campaign; inserts if not exists
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_camp_capping_update(PDO $conn): void
+{
+    $operator   = trim($_POST['operator']     ?? '');
+    $campaignId = (int)($_POST['campaign_id'] ?? 0);
+    $capping    = trim($_POST['capping']       ?? '0');
+    $product    = 'glamour';
+
+    if (!$operator || !$campaignId) {
+        echo json_encode(['success' => false, 'error' => 'Missing operator or campaign_id']);
+        return;
+    }
+
+    $logdb = logDbName($operator, $product);
+
+    try {
+        $stCheck = $conn->prepare(
+            "SELECT capping_id FROM {$logdb}.capping_tbl WHERE campaign_id = ? LIMIT 1"
+        );
+        $stCheck->execute([$campaignId]);
+        $row = $stCheck->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            $st = $conn->prepare(
+                "UPDATE {$logdb}.capping_tbl SET capping_count = ? WHERE campaign_id = ?"
+            );
+            $st->execute([$capping, $campaignId]);
+        } else {
+            $st = $conn->prepare(
+                "INSERT INTO {$logdb}.capping_tbl (campaign_id, capping_count) VALUES (?,?)"
+            );
+            $st->execute([$campaignId, $capping]);
+
+            // Set campaign_live = 0 when first capping is applied
+            $stLive = $conn->prepare(
+                "UPDATE {$logdb}.campaign_tbl SET campaign_live = 0 WHERE campaign_id = ?"
+            );
+            $stLive->execute([$campaignId]);
+        }
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action: camp_capping_erase
+// Resets campaign_live = 1 and deletes rows from capping_tbl for given IDs
+// ─────────────────────────────────────────────────────────────────────────────
+
+function action_camp_capping_erase(PDO $conn): void
+{
+    $operator = trim($_POST['operator'] ?? '');
+    $ids      = isset($_POST['campaign_ids']) && is_array($_POST['campaign_ids'])
+                ? array_map('intval', $_POST['campaign_ids']) : [];
+    $product  = 'glamour';
+
+    if (!$operator || empty($ids)) {
+        echo json_encode(['success' => false, 'error' => 'Missing operator or campaign IDs']);
+        return;
+    }
+
+    $logdb       = logDbName($operator, $product);
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+    try {
+        $stLive = $conn->prepare(
+            "UPDATE {$logdb}.campaign_tbl SET campaign_live = 1 WHERE campaign_id IN ({$placeholders})"
+        );
+        $stLive->execute($ids);
+
+        $stDel = $conn->prepare(
+            "DELETE FROM {$logdb}.capping_tbl WHERE campaign_id IN ({$placeholders})"
+        );
+        $stDel->execute($ids);
+
+        echo json_encode(['success' => true, 'erased' => count($ids)]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
 }
