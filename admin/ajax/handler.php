@@ -3052,18 +3052,18 @@ function action_currency_update(mysqli $con): void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ACTION: Callback Report — summary by product/operator/advertiser
+// ACTION: Callback Report — SP-based summary (GetCBSPerform + GetSentCgPerform)
 // Called by: callbackreport.php  →  POST ajax/handler.php?action=callback_report_load
-// POST params: product, operator ('all' or specific), advertiser ('all' or id),
+// POST params: product, operator ('all' or specific), advertiser ('all' or advname),
 //              start_date (d-m-Y), end_date (d-m-Y)
 // ═══════════════════════════════════════════════════════════════════════════════
 function action_callback_report_load(mysqli $con): void
 {
-    $report = 'gamebardb_vodafone_qatar_report';
-
-    $product    = trim($_POST['product']    ?? '');
-    $operator   = trim($_POST['operator']   ?? '');
+    $report     = 'gamebardb_vodafone_qatar_report';
+    $product    = mysqli_real_escape_string($con, trim($_POST['product']    ?? ''));
+    $operator   = mysqli_real_escape_string($con, trim($_POST['operator']   ?? ''));
     $advertiser = trim($_POST['advertiser'] ?? 'all');
+    $hours      = '24';
     $start_raw  = trim($_POST['start_date'] ?? date('d-m-Y'));
     $end_raw    = trim($_POST['end_date']   ?? date('d-m-Y'));
 
@@ -3075,54 +3075,94 @@ function action_callback_report_load(mysqli $con): void
         return;
     }
 
-    $start_date = date('Y-m-d', strtotime($start_raw));
-    $end_date   = date('Y-m-d', strtotime($end_raw));
-    if ($start_date < '2020-04-13') $start_date = '2020-04-13';
+    $start_date = date('Y-m-d 00:00:00', strtotime($start_raw));
+    $end_date   = date('Y-m-d 23:59:59', strtotime($end_raw));
 
-    $base_select = "SELECT mainreport.product, mainreport.operator, advname,
-                    SUM(cbsent) AS cbsum, SUM(pcsent) AS pcsent, operatorcost_usd
-             FROM {$report}.mainreport
-             LEFT JOIN {$report}.operatorcost ON mainreport.operator = operatorcost.operator
-             WHERE mainreport.date >= ? AND mainreport.date <= ?
-               AND mainreport.product = ?";
+    // ── Fetch SP URL templates from mainreportquery ───────────────────────────
+    $op_filter = ($operator === 'all')
+        ? "product='{$product}' AND perform_callback != '' AND perform_callback IS NOT NULL"
+        : "product='{$product}' AND operator='{$operator}' LIMIT 1";
 
-    // $base_tail = " AND cbsent > 0
-     $base_tail = "AND operatorcost.product = ?
-             GROUP BY mainreport.product, mainreport.operator, advname, operatorcost_usd
-             ORDER BY mainreport.product ASC, mainreport.operator ASC";
+    $res_q = mysqli_query($con,
+        "SELECT operator, perform_callback, perform_centtocg
+         FROM {$report}.mainreportquery WHERE {$op_filter}"
+    );
 
-    // 4 branches: operator (all/specific) × advertiser (all/specific)
-    if ($operator === 'all' && $advertiser === 'all') {
-        // $stmt = $con->prepare($base_select . " AND advertiser > 0" . $base_tail);
-        $stmt = $con->prepare($base_select . " " . $base_tail);
-        $stmt->bind_param('ssss', $start_date, $end_date, $product, $product);
+    // ── Run both SPs per operator, aggregate SUM(act) per advname ─────────────
+    $cb_data = [];   // [operator][advname] = total_cb
+    $pc_data = [];   // [operator][advname] = total_pc
+    $op_list = [];
 
-    } elseif ($operator === 'all' && $advertiser !== 'all') {
-        $stmt = $con->prepare($base_select . " AND mainreport.advname = ? " . $base_tail);
-        $stmt->bind_param('sssss', $start_date, $end_date, $product, $advertiser, $product);
+    while ($res_q && $qrow = mysqli_fetch_assoc($res_q)) {
+        $op_name = $qrow['operator'];
+        if (!in_array($op_name, $op_list)) $op_list[] = $op_name;
+        $cb_data[$op_name] = [];
+        $pc_data[$op_name] = [];
 
-    } elseif ($operator !== 'all' && $advertiser === 'all') {
-        $stmt = $con->prepare($base_select . " AND mainreport.operator = ? " . $base_tail);
-        $stmt->bind_param('sssss', $start_date, $end_date, $product, $operator, $product);
+        $url_cb = $qrow['perform_callback'] ?? '';
+        if ($url_cb) {
+            $q = str_replace(['[start_date]','[end_date]','[hours]'],
+                             [$start_date,   $end_date,   $hours], $url_cb);
+            $r = mysqli_query($con, $q);
+            if ($r) {
+                while ($row = mysqli_fetch_array($r)) {
+                    $a = $row['advname'];
+                    if ($advertiser !== 'all' && $a !== $advertiser) continue;
+                    $cb_data[$op_name][$a] = ($cb_data[$op_name][$a] ?? 0) + (int)$row['act'];
+                }
+                mysqli_free_result($r);
+            }
+            // Flush residual result sets left by CALL statement so next query works
+            while (mysqli_more_results($con) && mysqli_next_result($con)) {
+                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
+            }
+        }
 
-    } else {
-        $stmt = $con->prepare($base_select . " AND mainreport.operator = ? AND mainreport.advname = ? " . $base_tail);
-        $stmt->bind_param('ssssss', $start_date, $end_date, $product, $operator, $advertiser, $product);
+        $url_pc = $qrow['perform_centtocg'] ?? '';
+        if ($url_pc) {
+            $q = str_replace(['[start_date]','[end_date]','[hours]'],
+                             [$start_date,   $end_date,   $hours], $url_pc);
+            $r = mysqli_query($con, $q);
+            if ($r) {
+                while ($row = mysqli_fetch_array($r)) {
+                    $a = $row['advname'];
+                    if ($advertiser !== 'all' && $a !== $advertiser) continue;
+                    $pc_data[$op_name][$a] = ($pc_data[$op_name][$a] ?? 0) + (int)$row['act'];
+                }
+                mysqli_free_result($r);
+            }
+            // Flush residual result sets left by CALL statement
+            while (mysqli_more_results($con) && mysqli_next_result($con)) {
+                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
+            }
+        }
     }
 
-    if (!$stmt || !$stmt->execute()) {
-        echo '<div class="hp-card" style="margin-top:16px"><div class="hp-card-body" style="padding:60px;text-align:center">
-                <i class="fa fa-bar-chart" style="font-size:52px;color:#e2e8f0;display:block;margin-bottom:18px"></i>
-                <p style="color:#a0aec0;font-size:15px;margin:0 0 6px;font-weight:600">No Data Available</p>
-                <p style="color:#cbd5e0;font-size:13px;margin:0">No callback data found for the selected filters.<br>Try changing the date range, product, or operator.</p>
-              </div></div>';
-        return;
-    }
-
-    $res  = $stmt->get_result();
+    // ── Build flat rows: product | operator | advname | cbsum | pcsent | cost ──
     $rows = [];
-    while ($r = $res->fetch_assoc()) $rows[] = $r;
-    $stmt->close();
+    foreach ($op_list as $op_name) {
+        $op_esc   = mysqli_real_escape_string($con, $op_name);
+        $res_c    = mysqli_query($con,
+            "SELECT operatorcost_usd FROM {$report}.operatorcost
+             WHERE operator='{$op_esc}' AND product='{$product}' LIMIT 1"
+        );
+        $cost_usd = ($res_c && $rc = mysqli_fetch_assoc($res_c)) ? (float)$rc['operatorcost_usd'] : 0.0;
+
+        $advnames = array_unique(array_merge(
+            array_keys($cb_data[$op_name] ?? []),
+            array_keys($pc_data[$op_name] ?? [])
+        ));
+        foreach ($advnames as $adv) {
+            $rows[] = [
+                'product'          => $product,
+                'operator'         => $op_name,
+                'advname'          => $adv,
+                'cbsum'            => $cb_data[$op_name][$adv] ?? 0,
+                'pcsent'           => $pc_data[$op_name][$adv] ?? 0,
+                'operatorcost_usd' => $cost_usd,
+            ];
+        }
+    }
 
     if (empty($rows)) {
         echo '<div class="hp-card" style="margin-top:16px"><div class="hp-card-body" style="padding:60px;text-align:center">
@@ -3158,22 +3198,22 @@ function action_callback_report_load(mysqli $con): void
         $total_cost += $cost_row;
 
         $html .= '<tr>';
-        $html .= '<td>'                           . htmlspecialchars($r['product'])           . '</td>';
-        $html .= '<td>'                           . htmlspecialchars($r['operator'])          . '</td>';
-        $html .= '<td>'                           . htmlspecialchars($r['advname'])           . '</td>';
-        $html .= '<td style="text-align:right">'  . number_format((int)$r['cbsum'])          . '</td>';
-        $html .= '<td style="text-align:right">'  . number_format((int)$r['pcsent'])         . '</td>';
-        $html .= '<td style="text-align:right">'  . number_format((float)$r['operatorcost_usd'], 6) . '</td>';
-        $html .= '<td style="text-align:right">'  . number_format($cost_row, 4)              . '</td>';
+        $html .= '<td>'                           . htmlspecialchars($r['product'])                    . '</td>';
+        $html .= '<td>'                           . htmlspecialchars($r['operator'])                   . '</td>';
+        $html .= '<td>'                           . htmlspecialchars($r['advname'])                    . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format((int)$r['cbsum'])                   . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format((int)$r['pcsent'])                  . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format((float)$r['operatorcost_usd'], 6)   . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format($cost_row, 4)                       . '</td>';
         $html .= '</tr>';
     }
 
     $html .= '</tbody><tfoot><tr>';
     $html .= '<th colspan="3" style="text-align:right;font-weight:700">Total</th>';
-    $html .= '<th style="text-align:right">' . number_format($total_cb)          . '</th>';
-    $html .= '<th style="text-align:right">' . number_format($total_pc)          . '</th>';
+    $html .= '<th style="text-align:right">' . number_format($total_cb)      . '</th>';
+    $html .= '<th style="text-align:right">' . number_format($total_pc)      . '</th>';
     $html .= '<th></th>';
-    $html .= '<th style="text-align:right">' . number_format($total_cost, 4)     . '</th>';
+    $html .= '<th style="text-align:right">' . number_format($total_cost, 4) . '</th>';
     $html .= '</tr></tfoot>';
     $html .= '</table></div></div>';
 
@@ -3181,16 +3221,17 @@ function action_callback_report_load(mysqli $con): void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ACTION: Operators that have callback data for a given product + date range
+// ACTION: Operators that have actual SP data for a given product + date range
 // Called by: callbackreport.php  →  POST ajax/handler.php?action=callback_report_operators
 // POST params: product, start_date (d-m-Y), end_date (d-m-Y)
+// Runs perform_callback SP per operator — only includes operators with ≥1 row returned
 // Returns: JSON array of operator strings
 // ═══════════════════════════════════════════════════════════════════════════════
 function action_callback_report_operators(mysqli $con): void
 {
     header('Content-Type: application/json');
     $report    = 'gamebardb_vodafone_qatar_report';
-    $product   = trim($_POST['product']    ?? '');
+    $product   = mysqli_real_escape_string($con, trim($_POST['product']    ?? ''));
     $start_raw = trim($_POST['start_date'] ?? date('d-m-Y'));
     $end_raw   = trim($_POST['end_date']   ?? date('d-m-Y'));
 
@@ -3199,41 +3240,57 @@ function action_callback_report_operators(mysqli $con): void
         return;
     }
 
-    $start_date = date('Y-m-d', strtotime($start_raw));
-    $end_date   = date('Y-m-d', strtotime($end_raw));
-    if ($start_date < '2020-04-13') $start_date = '2020-04-13';
+    $start_date = date('Y-m-d 00:00:00', strtotime($start_raw));
+    $end_date   = date('Y-m-d 23:59:59', strtotime($end_raw));
 
-    $stmt = $con->prepare(
-        "SELECT DISTINCT mainreport.operator
-         FROM {$report}.mainreport
-         LEFT JOIN {$report}.operatorcost ON mainreport.operator = operatorcost.operator
-         WHERE mainreport.date >= ? AND mainreport.date <= ?
-           AND mainreport.product = ?
-        --    AND advertiser > 0 AND cbsent > 0
-           AND operatorcost.product = ?
-         ORDER BY mainreport.operator ASC"
+    $res_q = mysqli_query($con,
+        "SELECT operator, perform_callback, perform_centtocg
+         FROM {$report}.mainreportquery
+         WHERE product = '{$product}'"
     );
-    $stmt->bind_param('ssss', $start_date, $end_date, $product, $product);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $ops = [];
-    while ($r = $res->fetch_assoc()) $ops[] = $r['operator'];
-    $stmt->close();
 
+    $ops = [];
+    while ($res_q && $qrow = mysqli_fetch_assoc($res_q)) {
+        $has_data = false;
+
+        // Check both SPs — include operator if either Callback Sent OR Pin Confirmed has act > 0
+        foreach (['perform_callback', 'perform_centtocg'] as $col) {
+            if ($has_data) break;
+            $url = $qrow[$col] ?? '';
+            if (!$url) continue;
+            $q = str_replace(['[start_date]','[end_date]','[hours]'],
+                             [$start_date,   $end_date,   '24'], $url);
+            $r = mysqli_query($con, $q);
+            if ($r) {
+                while ($row = mysqli_fetch_array($r)) {
+                    if ((int)($row['act'] ?? 0) > 0) { $has_data = true; break; }
+                }
+                mysqli_free_result($r);
+            }
+            while (mysqli_more_results($con) && mysqli_next_result($con)) {
+                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
+            }
+        }
+
+        if ($has_data) $ops[] = $qrow['operator'];
+    }
+
+    sort($ops);
     echo json_encode($ops);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ACTION: Advertisers that have callback data for a given product + date range
+// ACTION: Advertisers present in SP results for a given product + date range
 // Called by: callbackreport.php  →  POST ajax/handler.php?action=callback_report_advertisers
 // POST params: product, start_date (d-m-Y), end_date (d-m-Y)
 // Returns: JSON array of {id, name} objects
+// Runs perform_callback SP for all configured operators to get real advertiser names
 // ═══════════════════════════════════════════════════════════════════════════════
 function action_callback_report_advertisers(mysqli $con): void
 {
     header('Content-Type: application/json');
     $report    = 'gamebardb_vodafone_qatar_report';
-    $product   = trim($_POST['product']    ?? '');
+    $product   = mysqli_real_escape_string($con, trim($_POST['product']    ?? ''));
     $start_raw = trim($_POST['start_date'] ?? date('d-m-Y'));
     $end_raw   = trim($_POST['end_date']   ?? date('d-m-Y'));
 
@@ -3242,25 +3299,41 @@ function action_callback_report_advertisers(mysqli $con): void
         return;
     }
 
-    $start_date = date('Y-m-d', strtotime($start_raw));
-    $end_date   = date('Y-m-d', strtotime($end_raw));
-    if ($start_date < '2020-04-13') $start_date = '2020-04-13';
+    $start_date = date('Y-m-d 00:00:00', strtotime($start_raw));
+    $end_date   = date('Y-m-d 23:59:59', strtotime($end_raw));
 
-    $stmt = $con->prepare(
-        "SELECT DISTINCT advname AS name
-         FROM {$report}.mainreport
-         WHERE date >= ? AND date <= ?
-           AND product = ?
-           AND advname IS NOT NULL AND advname != ''
-         ORDER BY advname ASC"
+    // Fetch both SP URL templates for this product — check BOTH SPs for advnames with act > 0
+    $res_q = mysqli_query($con,
+        "SELECT operator, perform_callback, perform_centtocg
+         FROM {$report}.mainreportquery
+         WHERE product = '{$product}'"
     );
-    $stmt->bind_param('sss', $start_date, $end_date, $product);
-    $stmt->execute();
-    $res  = $stmt->get_result();
-    $advs = [];
-    while ($r = $res->fetch_assoc()) $advs[] = ['id' => $r['name'], 'name' => $r['name']];
-    $stmt->close();
 
+    $advnames = [];
+    while ($res_q && $qrow = mysqli_fetch_assoc($res_q)) {
+        foreach (['perform_callback', 'perform_centtocg'] as $col) {
+            $url = $qrow[$col] ?? '';
+            if (!$url) continue;
+            $q = str_replace(['[start_date]','[end_date]','[hours]'],
+                             [$start_date,   $end_date,   '24'], $url);
+            $r = mysqli_query($con, $q);
+            if ($r) {
+                while ($row = mysqli_fetch_array($r)) {
+                    $a = $row['advname'] ?? '';
+                    if ($a !== '' && (int)($row['act'] ?? 0) > 0 && !in_array($a, $advnames)) {
+                        $advnames[] = $a;
+                    }
+                }
+                mysqli_free_result($r);
+            }
+            while (mysqli_more_results($con) && mysqli_next_result($con)) {
+                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
+            }
+        }
+    }
+
+    sort($advnames);
+    $advs = array_map(function($a) { return ['id' => $a, 'name' => $a]; }, $advnames);
     echo json_encode($advs);
 }
 
