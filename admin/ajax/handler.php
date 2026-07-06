@@ -366,8 +366,7 @@ function action_subdash_data(mysqli $con): void
             a.totalamount  * f.toinr                                     AS totalamount,
             a.cbsent,
             a.cbsent      * COALESCE(b.operator_cost, 0) * f.toinr      AS digiinvest,
-            a.totalamount * COALESCE(c.revenueshare,  0) * f.toinr      AS revenueshare,
-            g.ptotalamount                                               AS lastmonthrevenue
+            a.totalamount * COALESCE(c.revenueshare,  0) * f.toinr      AS revenueshare
         FROM (
             SELECT product, country, operator,
                    SUM(actcount)    AS actcount,
@@ -387,12 +386,6 @@ function action_subdash_data(mysqli $con): void
         LEFT JOIN  (SELECT operator, MAX(operator_cost) AS operator_cost FROM `{$report}`.operatorcost        GROUP BY operator) b ON b.operator = a.operator
         LEFT JOIN  (SELECT operator, MAX(revenueshare)  AS revenueshare  FROM `{$report}`.svmobi_revenueshare GROUP BY operator) c ON c.operator = a.operator
         INNER JOIN (SELECT country,  MAX(toinr)         AS toinr          FROM `{$report}`.currency            GROUP BY country)  f ON f.country  = a.country
-        LEFT JOIN (
-            SELECT product, operator, SUM(ptotalamount) AS ptotalamount
-            FROM `{$report}`.subdashboard
-            WHERE date >= '{$laststartdate}' AND date <= '{$lastenddate}'
-            GROUP BY product, operator
-        ) g ON g.product = a.product AND g.operator = a.operator
         WHERE (a.totalcount > 0 OR a.cbsent > 0)
         ORDER BY {$orderby}
     ";
@@ -405,14 +398,31 @@ function action_subdash_data(mysqli $con): void
         }
     }
 
-    $plasttotalamount = 0.0;
-    $res3 = mysqli_query($con,
-        "SELECT SUM(ptotalamount) AS plasttotalamount
-         FROM `{$report}`.subdashboard
-         WHERE date >= '{$laststartdate}' AND date <= '{$lastenddate}'"
-    );
-    if ($res3 && ($r3 = mysqli_fetch_assoc($res3))) {
-        $plasttotalamount = (float)($r3['plasttotalamount'] ?? 0);
+    // Get last month's revenue per operator+product from mainreport (always available)
+    $lm_sql = "
+        SELECT lm.product, lm.operator,
+               SUM(lm.totalamount * cur.toinr) AS lastmonthrevenue
+        FROM (
+            SELECT product, operator, country, SUM(totalamount) AS totalamount
+            FROM `{$report}`.mainreport
+            WHERE advertiser = '0'
+              AND Date >= '{$laststartdate}' AND Date <= '{$lastenddate}'
+              AND operator NOT IN ({$excl_sql})
+            GROUP BY product, operator, country
+        ) lm
+        INNER JOIN (SELECT country, MAX(toinr) AS toinr FROM `{$report}`.currency GROUP BY country) cur
+               ON cur.country = lm.country
+        GROUP BY lm.product, lm.operator
+    ";
+    $lm_res = mysqli_query($con, $lm_sql);
+    $lastMonthByOpProduct = [];
+    $plasttotalamount     = 0.0;
+    if ($lm_res) {
+        while ($lmrow = mysqli_fetch_assoc($lm_res)) {
+            $key = $lmrow['product'] . '|' . $lmrow['operator'];
+            $lastMonthByOpProduct[$key] = (float)$lmrow['lastmonthrevenue'];
+            $plasttotalamount += (float)$lmrow['lastmonthrevenue'];
+        }
     }
 
     $totals = array_fill_keys(
@@ -482,8 +492,9 @@ function action_subdash_data(mysqli $con): void
                     $pdigitin = $digitin  * $eday / $date1;
                     $prevenue = $revenue  * $eday / $date1;
                     $pprofit  = $profit   * $eday / $date1;
-                    $mm       = (float)($r['lastmonthrevenue'] ?? 0) / $devide;
-                    $growth   = ($ptotal > 0) ? ($ptotal - $mm) / $ptotal * 100 : 0;
+                    $lm_key   = $r['product'] . '|' . $r['operator'];
+                    $mm       = ($lastMonthByOpProduct[$lm_key] ?? 0.0) / $devide;
+                    $growth   = $mm > 0 ? ($ptotal - $mm) / $mm * 100 : ($ptotal > 0 ? 100 : 0);
                 ?>
                 <tr>
                     <td style="background:#dedbdb; font-weight:600;"><?php echo htmlspecialchars($r['country']); ?></td>
@@ -510,9 +521,10 @@ function action_subdash_data(mysqli $con): void
                     </td>
                 </tr>
                 <?php endforeach;
-                    $total_growth = ($totals['ptotal'] > 0)
-                        ? ($totals['ptotal'] - $plasttotalamount) / $totals['ptotal'] * 100
-                        : 0;
+                    $lm_total     = $plasttotalamount / $devide;
+                    $total_growth = $lm_total > 0
+                        ? ($totals['ptotal'] - $lm_total) / $lm_total * 100
+                        : ($totals['ptotal'] > 0 ? 100 : 0);
                 ?>
             </tbody>
             <tfoot>
