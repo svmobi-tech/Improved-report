@@ -2,6 +2,7 @@
 $currentPage = basename($_SERVER['PHP_SELF']);
 $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports' etc.
 ?>
+<div class="hp-mobile-overlay" id="hp-mobile-overlay"></div>
 <div class="hp-sidebar">
   <div class="hp-sidebar-brand">
     <img src="images/logo.png" alt="SVMobi Logo">

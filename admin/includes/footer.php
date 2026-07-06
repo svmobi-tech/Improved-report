@@ -13,9 +13,28 @@
 <script src="js/moment/moment.min.js"></script>
 <script src="vendors/bootstrap-daterangepicker/daterangepicker.js"></script>
 <script>
-// Sidebar toggle
+// Sidebar toggle — desktop collapses inline; mobile overlays on top
 document.getElementById('sidebarToggle').addEventListener('click', function () {
-    document.body.classList.toggle('sidebar-collapsed');
+    if (window.innerWidth <= 768) {
+        document.body.classList.toggle('sidebar-mobile-open');
+    } else {
+        document.body.classList.toggle('sidebar-collapsed');
+    }
+});
+
+// Close mobile sidebar when overlay is tapped
+var _overlay = document.getElementById('hp-mobile-overlay');
+if (_overlay) {
+    _overlay.addEventListener('click', function () {
+        document.body.classList.remove('sidebar-mobile-open');
+    });
+}
+
+// Clean up mobile state on resize to desktop
+window.addEventListener('resize', function () {
+    if (window.innerWidth > 768) {
+        document.body.classList.remove('sidebar-mobile-open');
+    }
 });
 
 // Raw table clone saved BEFORE DataTables strips the thead content.

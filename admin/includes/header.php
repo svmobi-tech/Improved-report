@@ -299,11 +299,24 @@
     #output table th { background: #4a5568; color: #fff; font-weight: 600; }
     #output table tr:nth-child(even) td { background: #f7f8fa; }
 
+    /* ── Mobile sidebar overlay ──────────────────────────────────── */
+    .hp-mobile-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.52); z-index: 1040;
+    }
+    body.sidebar-mobile-open .hp-mobile-overlay { display: block; }
+    body.sidebar-mobile-open .hp-sidebar { transform: none !important; }
+
     /* ── Responsive ──────────────────────────────────────────────── */
     @media (max-width: 768px) {
       .hp-sidebar { transform: translateX(-240px); }
       .hp-main { margin-left: 0; }
-      .hp-content { padding: 16px; }
+      .hp-content { padding: 12px; }
+      .hp-date-badge { display: none !important; }
+      .hp-user-chip span { display: none; }
+      .hp-logout-text { display: none; }
+      .hp-topnav-title { font-size: 14px; }
+      .hp-topnav { padding: 0 12px; }
     }
   </style>
 </head>
