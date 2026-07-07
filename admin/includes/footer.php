@@ -142,8 +142,10 @@ $(document).ready(function () {
         });
     }
 
-    // Auto-load on page open
+    // Auto-load on page open (set $noAutoLoad = true in a page to disable)
+    <?php if (empty($noAutoLoad)): ?>
     setTimeout(submitReport, 500);
+    <?php endif; ?>
 
     // Re-load on form submit
     $('#formname').on('submit', function (e) {

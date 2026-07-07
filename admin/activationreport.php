@@ -264,6 +264,15 @@ if (isset($_POST['submit'])):
                                             $start_date = $date1 . " 00:00:00";
                                             $end_date   = $date1 . " 23:59:59";
 
+                                            // Cache today's SP results in session for 5 min to avoid ~58 sequential SP calls on every filter
+                                            $act_cache_key = 'act_today_' . $date1 . '_h' . $hours;
+                                            $act_cache_ts  = $act_cache_key . '_ts';
+                                            $cache_valid   = isset($_SESSION[$act_cache_key], $_SESSION[$act_cache_ts])
+                                                          && (time() - $_SESSION[$act_cache_ts]) < 300;
+
+                                            if ($cache_valid) {
+                                                $today = $_SESSION[$act_cache_key];
+                                            } else {
                                             $today = [];
 
                                             $today['gamebar_france']      = call_sp($con1, 'fashionbardb_france.get_activation',      $start_date, $end_date, $hours);
@@ -329,6 +338,11 @@ if (isset($_POST['submit'])):
                                             // Glambar Poland = sum of two separate SP sources
                                             $today['glambar_poland']       = call_sp($con1, 'glambar_plteleaudio.getactivation',         $start_date, $end_date, $hours)
                                                                            + call_sp($con1, 'fashionbardb_polandglam.get_activation',    $start_date, $end_date, $hours);
+
+                                            // Store in session cache
+                                            $_SESSION[$act_cache_key] = $today;
+                                            $_SESSION[$act_cache_ts]  = time();
+                                            } // end cache miss block
 
                                             $cc = 1;
                                             ?>
@@ -402,7 +416,7 @@ if ($is_ajax) {
 </div><!-- /.hp-content -->
 </div><!-- /.hp-main -->
 
-<?php include("includes/footer.php"); ?>
+<?php $noAutoLoad = true; include("includes/footer.php"); ?>
 
 <script>
 $(document).ready(function () {
