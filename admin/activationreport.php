@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 date_default_timezone_set("Asia/Kolkata");
 
 require_once __DIR__ . '/includes/config.php';
+include("includes/check_session.php");
 $con1 = $con; // credentials loaded from .env via config.php
 
 $start_date = '';
