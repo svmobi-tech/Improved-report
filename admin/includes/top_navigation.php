@@ -16,7 +16,7 @@
       <i class="fa fa-calendar"></i> <?php echo date('d M Y'); ?>
     </span>
     <a href="logout.php" class="hp-logout-btn" title="Logout">
-      <i class="fa fa-sign-out"></i> <span class="hp-logout-text">Logout</span>
+      <i class="fa fa-sign-out"></i>
     </a>
   </div>
 </div>

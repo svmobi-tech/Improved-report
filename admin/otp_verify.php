@@ -3,7 +3,9 @@ session_start();
 date_default_timezone_set("Asia/Calcutta");
 error_reporting(0);
 
+require_once 'includes/config.php';
 require_once 'includes/totp_helper.php';
+require_once 'includes/device_trust.php';
 
 if (isset($_GET['cancel'])) {
     session_unset();
@@ -25,7 +27,10 @@ if (isset($_POST['otp'])) {
         $_SESSION['userid']   = $_SESSION['2fa_userid'];
         $_SESSION['admin']    = $_SESSION['2fa_admin'];
         $_SESSION['username'] = $_SESSION['2fa_username'];
-        unset($_SESSION['2fa_pending'], $_SESSION['2fa_secret'],
+        if (!empty($_SESSION['2fa_trust_device'])) {
+            register_trusted_device($con, (int) $_SESSION['userid']);
+        }
+        unset($_SESSION['2fa_pending'], $_SESSION['2fa_secret'], $_SESSION['2fa_trust_device'],
               $_SESSION['2fa_userid'], $_SESSION['2fa_admin'], $_SESSION['2fa_username']);
         header('Location: dashboard.php'); exit;
     } else {

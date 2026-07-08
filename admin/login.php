@@ -8,11 +8,28 @@ date_default_timezone_set("Asia/Calcutta");
 require_once 'includes/config.php';
 /** @var mysqli $con */
 require_once 'includes/totp_helper.php';
+require_once 'includes/device_trust.php';
 
 $error = '';
 
 if (!empty($_SESSION['userid'])) {
     header('Location: dashboard.php'); exit;
+}
+
+// Trusted device cookie check — agar valid cookie hai to seedha dashboard
+$_td = check_trusted_device($con);
+if ($_td) {
+    $stmt = $con->prepare('SELECT userid, username, admin FROM gamebardb_vodafone_qatar_report.login WHERE userid=?');
+    $stmt->bind_param('i', $_td['userid']);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($user) {
+        $_SESSION['userid']   = $user['userid'];
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['admin']    = $user['admin'];
+        header('Location: dashboard.php'); exit;
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -46,6 +63,8 @@ if (isset($_POST['submit'])) {
         $stmt->close();
 
         if (!empty($userid)) {
+            $trust_device = !empty($_POST['trust_device']);
+
             // Users in this list skip 2FA and go directly to dashboard
             $no_2fa_users = ['durgesh'];
 
@@ -53,12 +72,16 @@ if (isset($_POST['submit'])) {
                 $_SESSION['userid']   = $userid;
                 $_SESSION['admin']    = $admin;
                 $_SESSION['username'] = $username;
+                if ($trust_device) {
+                    register_trusted_device($con, (int) $userid);
+                }
                 header('Location: dashboard.php'); exit;
             }
 
-            $_SESSION['2fa_userid']   = $userid;
-            $_SESSION['2fa_admin']    = $admin;
-            $_SESSION['2fa_username'] = $username;
+            $_SESSION['2fa_userid']       = $userid;
+            $_SESSION['2fa_admin']        = $admin;
+            $_SESSION['2fa_username']     = $username;
+            $_SESSION['2fa_trust_device'] = $trust_device;
 
             if (empty($totp_secret)) {
                 $_SESSION['2fa_setup'] = true;
@@ -126,7 +149,9 @@ if (isset($_POST['submit'])) {
           </button>
         </div>
       </div>
-
+    <label>
+        <input type="checkbox" name="trust_device" value="1"> Remember this device for 90 days
+    </label>
       <button type="submit" name="submit" class="btn">Sign In</button>
 
     </form>

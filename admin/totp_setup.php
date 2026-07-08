@@ -6,6 +6,7 @@ date_default_timezone_set("Asia/Calcutta");
 
 require_once 'includes/config.php';
 require_once 'includes/totp_helper.php';
+require_once 'includes/device_trust.php';
 
 if (empty($_SESSION['2fa_setup'])) {
     header('Location: login.php'); exit;
@@ -39,7 +40,10 @@ if (isset($_POST['otp'])) {
         $_SESSION['userid']   = $_SESSION['2fa_userid'];
         $_SESSION['admin']    = $_SESSION['2fa_admin'];
         $_SESSION['username'] = $_SESSION['2fa_username'];
-        unset($_SESSION['2fa_setup'], $_SESSION['2fa_temp_secret'],
+        if (!empty($_SESSION['2fa_trust_device'])) {
+            register_trusted_device($con, (int) $_SESSION['userid']);
+        }
+        unset($_SESSION['2fa_setup'], $_SESSION['2fa_temp_secret'], $_SESSION['2fa_trust_device'],
               $_SESSION['2fa_userid'], $_SESSION['2fa_admin'], $_SESSION['2fa_username']);
 
         header('Location: dashboard.php'); exit;
