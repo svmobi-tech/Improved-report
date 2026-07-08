@@ -311,15 +311,15 @@ if (isset($_POST['submit'])):
                                             $today['contest_bh']           = call_sp($con1, 'contestdb_bh.get_activation',              $start_date, $end_date, $hours);
 
                                             // Multi-source aggregations
-                                            $today['gamebar_iraq']         = call_sp($con1, 'gamebar_iqzain_qg.getactivation',          $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'gamebar_iqmw_api.getactivation',            $start_date, $end_date, $hours);
+                                            $today['gamebar_iraq']         = call_sp($con1, 'gamebar_iqzain_qg.getactivation_1',          $start_date, $end_date, $hours)
+                                                                           + call_sp($con1, 'gamebar_iqmw_api.getactivation_1',            $start_date, $end_date, $hours);
                                             $today['gamebar_qatar']        = call_sp($con1, 'fashionbardb_qatarooredoo.get_activation',  $start_date, $end_date, $hours);
                                             $today['gamebar_egmon']        = call_sp($con1, 'gamebar_egypt.getactivation',               $start_date, $end_date, $hours)
                                                                            + call_sp($con1, 'gamebar_egypt_mondianew.getactivation',     $start_date, $end_date, $hours);
                                             $today['gamebar_czech']        = call_sp($con1, 'fashionbardb_cz.get_activation',            $start_date, $end_date, $hours);
                                             $today['Glambar_southafrica']  = call_sp($con1, 'fashionbardb_zaglam.get_activation',        $start_date, $end_date, $hours)
                                                                            + call_sp($con1, 'glambar_zamobixone.get_activation',         $start_date, $end_date, $hours);
-                                            $today['gamebar_southafrica']  = call_sp($con1, 'fashionbardb_za.get_activation',            $start_date, $end_date, $hours)
+                                            $today['gamebar_southafrica']  = call_sp($con1, 'fashionbardb_za.get_activation_1',            $start_date, $end_date, $hours)
                                                                            + call_sp($con1, 'gamebar_zamobixone.get_activation',         $start_date, $end_date, $hours);
                                             $today['gamebar_indoneisa']    = call_sp($con1, 'gamebardb_indonesia.get_activation',        $start_date, $end_date, $hours)
                                                                            + call_sp($con1, 'fashionbardb_idtelkomsel.get_activation',   $start_date, $end_date, $hours);
