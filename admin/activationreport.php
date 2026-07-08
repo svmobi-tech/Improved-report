@@ -108,6 +108,99 @@ function call_sp(mysqli $con, string $db_proc, string $start, string $end, strin
     return $act;
 }
 
+// Renders one <tr> for the report table.
+// $vals maps activation_report column key => value. Works for both a table row
+// (fetched from activation_report) and a live-computed today row.
+function render_row(string $dateLabel, array $vals, array $columns, array $ll): void {
+    // 'glambar_poland' is virtual (glambar_pl + glambar_pldmc). Only derive it when
+    // it isn't already provided — the live path sets it directly from two SP sources.
+    if (!isset($vals['glambar_poland'])) {
+        $vals['glambar_poland'] = ($vals['glambar_pl'] ?? 0) + ($vals['glambar_pldmc'] ?? 0);
+    }
+    echo "<tr><td>{$dateLabel}</td>";
+    foreach ($columns as $product => $countries) {
+        foreach ($countries as $country => $col) {
+            if (($ll[$product][$country] ?? '') === 'Open') {
+                echo "<td>" . ($vals[$col] ?? '') . "</td>";
+            }
+        }
+    }
+    echo "</tr>";
+}
+
+// Live-computes today's activations by fan-out over ~58 stored procedures.
+// Used ONLY as a fallback when the refresh cron has not yet populated today's
+// row in activation_report. Normal loads read the pre-aggregated table instead.
+function compute_today_live(mysqli $con, string $start, string $end, int $hours): array {
+    $today = [];
+
+    $today['gamebar_france']      = call_sp($con, 'fashionbardb_france.get_activation',      $start, $end, $hours);
+    $today['gamebar_gabon']       = call_sp($con, 'fashionbardb_gabon.get_activation',       $start, $end, $hours);
+    $today['gamebar_turkey']      = call_sp($con, 'fashionbardb_paygurutr.get_activation',   $start, $end, $hours);
+    $today['gamebar_switzerland'] = call_sp($con, 'gamebar_ch_nth.get_activation',           $start, $end, $hours);
+    $today['11Players_KSA']       = call_sp($con, 'fashionbardb_sa11.get_activation',        $start, $end, $hours);
+    $today['gamebar_pk']          = call_sp($con, 'fashionbardb_pkzong.get_activation',      $start, $end, $hours);
+    $today['gamebar_ro']          = call_sp($con, 'gamebar_ro.get_activation',               $start, $end, $hours);
+    $today['gamebar_finland']     = call_sp($con, 'fashionbardb_finland.get_activation',     $start, $end, $hours);
+    $today['gamebar_slovenia']    = call_sp($con, 'gamebar_slovenia.get_activation',         $start, $end, $hours);
+    $today['glambar_slovenia']    = call_sp($con, 'glambar_slovenia.get_activation',         $start, $end, $hours);
+    $today['glambar_czech']       = call_sp($con, 'fashionbardb_czglam.get_activation',      $start, $end, $hours);
+    $today['gamebar_ksa']         = call_sp($con, 'fashionbardb_timwezain.get_activation',   $start, $end, $hours);
+    $today['gamebar_myanmar']     = call_sp($con, 'fashionbardb_myanmartelenor.get_activation', $start, $end, $hours);
+    $today['gamebar_Mozambique']  = call_sp($con, 'fashionbardb_mz.get_activation',          $start, $end, $hours);
+    $today['gamebar_paydashgr']   = call_sp($con, 'fashionbardb_greece.get_activation',      $start, $end, $hours);
+    $today['Glambar_paydashgr']   = call_sp($con, 'fashionbardb_greeceglambar.get_activation', $start, $end, $hours);
+    $today['gamebar_uae']         = call_sp($con, 'fashionbardb_etisalat.get_activation',    $start, $end, $hours);
+    $today['gamebar_pl']          = call_sp($con, 'fashionbardb_polandgame.get_activation',  $start, $end, $hours);
+    $today['gamebar_bahrain']     = call_sp($con, 'fashionbardb_bh.get_activation',          $start, $end, $hours);
+    $today['glambar_thailand']    = call_sp($con, 'fashionbardb_glam9005thailand.get_activation', $start, $end, $hours);
+    $today['gamebar_thailand']    = call_sp($con, 'fashionbardb_game9305thailand.get_activation', $start, $end, $hours);
+    $today['gamebar_oman']        = call_sp($con, 'fashionbardb_omooredoo.get_activation',   $start, $end, $hours);
+    $today['gamebar_kenya']       = call_sp($con, 'fashionbardb_safaricom.get_activation',   $start, $end, $hours);
+    $today['gamebar_ghana']       = call_sp($con, 'gamebar_ghairtel_mtech.getactivation',    $start, $end, $hours);
+    $today['11Players_nigeria']   = call_sp($con, 'fashionbardb_ngmtn11.get_activation',     $start, $end, $hours);
+    $today['gamebar_Palestine']   = call_sp($con, 'fashionbardb_psjw.get_activation',        $start, $end, $hours);
+    $today['11Players_kenya']     = call_sp($con, 'fashionbardb_safaricompkm.get_activation', $start, $end, $hours);
+    $today['contest_qatar']       = call_sp($con, 'contestdb_qaoo.get_activation',           $start, $end, $hours);
+    $today['gamebar_lk']          = call_sp($con, 'gamebar_lk_dig.getactivation',            $start, $end, $hours);
+    $today['contest_bh']          = call_sp($con, 'contestdb_bh.get_activation',             $start, $end, $hours);
+
+    // Multi-source aggregations
+    $today['gamebar_iraq']        = call_sp($con, 'gamebar_iqzain_qg.getactivation',         $start, $end, $hours)
+                                  + call_sp($con, 'gamebar_iqmw_api.getactivation',          $start, $end, $hours);
+    $today['gamebar_qatar']       = call_sp($con, 'fashionbardb_qatarooredoo.get_activation', $start, $end, $hours);
+    $today['gamebar_egmon']       = call_sp($con, 'gamebar_egypt.getactivation',             $start, $end, $hours)
+                                  + call_sp($con, 'gamebar_egypt_mondianew.getactivation',   $start, $end, $hours);
+    $today['gamebar_czech']       = call_sp($con, 'fashionbardb_cz.get_activation',          $start, $end, $hours);
+    $today['Glambar_southafrica'] = call_sp($con, 'fashionbardb_zaglam.get_activation',      $start, $end, $hours)
+                                  + call_sp($con, 'glambar_zamobixone.get_activation',       $start, $end, $hours);
+    $today['gamebar_southafrica'] = call_sp($con, 'fashionbardb_za.get_activation',          $start, $end, $hours)
+                                  + call_sp($con, 'gamebar_zamobixone.get_activation',       $start, $end, $hours);
+    $today['gamebar_indoneisa']   = call_sp($con, 'gamebardb_indonesia.get_activation',      $start, $end, $hours)
+                                  + call_sp($con, 'fashionbardb_idtelkomsel.get_activation', $start, $end, $hours);
+    $today['gamebar_kuwait']      = call_sp($con, 'fashionbardb_slakwzain.get_activation',   $start, $end, $hours)
+                                  + call_sp($con, 'fashionbardb_slakwstc.get_activation',    $start, $end, $hours);
+    $today['gamebar_jordan']      = call_sp($con, 'fashionbardb_joorange.get_activation',    $start, $end, $hours)
+                                  + call_sp($con, 'fashionbardb_joumniah.get_activation',    $start, $end, $hours)
+                                  + call_sp($con, 'gamebar_jozain.getactivation',            $start, $end, $hours);
+    $today['gamebar_bangladesh']  = call_sp($con, 'gamebar_bdgrameen.getactivation',         $start, $end, $hours)
+                                  + call_sp($con, 'fashionbardb_bdgp.get_activation',        $start, $end, $hours)
+                                  + call_sp($con, 'gamebar_bdrobi.getactivation',            $start, $end, $hours);
+    $today['gamebar_Nigeria']     = call_sp($con, 'gamebar_nigeria_MMT.getactivation',       $start, $end, $hours)
+                                  + call_sp($con, 'fashionbardb_ngmtn.get_activation',       $start, $end, $hours);
+    $today['11Players_bd']        = call_sp($con, '11players_bdrobi.getactivation',          $start, $end, $hours)
+                                  + call_sp($con, '11players_bdrobi_weekly.getactivation',   $start, $end, $hours)
+                                  + call_sp($con, '11players_bdrobi_monthly.getactivation',  $start, $end, $hours);
+    $today['gamebar_ethiopia']    = call_sp($con, 'gamebar_ethopia.getactivation',           $start, $end, $hours);
+    $today['11players_ethiopia']  = call_sp($con, '11players_ethopia.getactivation',         $start, $end, $hours);
+    $today['11players_ghana']     = call_sp($con, 'fashionbardb_ghmtn11.get_activation',     $start, $end, $hours);
+    // Glambar Poland = sum of two separate SP sources
+    $today['glambar_poland']      = call_sp($con, 'glambar_plteleaudio.getactivation',       $start, $end, $hours)
+                                  + call_sp($con, 'fashionbardb_polandglam.get_activation',  $start, $end, $hours);
+
+    return $today;
+}
+
 // Detect AJAX request (sent by jQuery with X-Requested-With header).
 $is_ajax = (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest');
 
@@ -213,58 +306,37 @@ if (isset($_POST['submit'])):
 
                                     <tbody>
                                         <?php
-                                        $date1 = date('Y-m-d');
-                                        $b = $c = 0;
+                                        $date1       = date('Y-m-d');
+                                        $start_date1 = date('Y-m-d', strtotime($_POST['start_date']));
+                                        $end_date1   = date('Y-m-d', strtotime($_POST['end_date']));
+                                        $hours       = (int)$_POST['hours'];
+                                        $report      = 'gamebardb_vodafone_qatar_report';
 
-                                        if ($start_date == $end_date) {
-                                            $start_date  = date('Y-m-d 00:00:00', strtotime($_POST['start_date']));
-                                            $end_date    = date('Y-m-d 23:59:59', strtotime($_POST['end_date']));
-                                            $start_date1 = date('Y-m-d', strtotime($_POST['start_date']));
-                                            $end_date1   = date('Y-m-d', strtotime($_POST['end_date']));
-                                            $hours       = $_POST['hours'];
-                                        } else {
-                                            $start_date  = date('Y-m-d 00:00:00', strtotime($_POST['start_date']));
-                                            $end_date    = date('Y-m-d 00:00:00', strtotime($_POST['end_date']));
-                                            $start_date1 = date('Y-m-d', strtotime($_POST['start_date']));
-                                            $end_date1   = date('Y-m-d', strtotime($_POST['end_date']));
-                                            $hours       = $_POST['hours'];
-                                        }
+                                        // Single indexed read for the whole range — including today, which the
+                                        // refresh cron keeps current in activation_report. No live SP fan-out here.
+                                        $sql = "select * from {$report}.activation_report"
+                                             . " where date>='{$start_date1}' and date<='{$end_date1}' and hour='{$hours}'"
+                                             . " order by `date` asc";
 
-                                        if ($end_date1 == $date1 && $start_date1 == $date1) {
-                                            $c = 1;
-                                        } elseif ($end_date1 == $date1 && $start_date1 != $date1) {
-                                            $b = 1;
-                                            $c = 1;
-                                        } else {
-                                            $b = 1;
-                                        }
-
-                                        if ($b == 1) {
-                                            $report = 'gamebardb_vodafone_qatar_report';
-                                            $sql    = "select * from {$report}.activation_report"
-                                                    . " where date>='{$start_date1}' and date<='{$end_date}' and hour='{$hours}'"
-                                                    . " order by `date` asc";
-
-                                            $result = $con1->query($sql);
-                                            while ($row = mysqli_fetch_array($result)) {
-                                                $row['glambar_poland'] = ($row['glambar_pl'] ?? 0) + ($row['glambar_pldmc'] ?? 0);
-                                                echo "<tr><td>{$row['date']}</td>";
-                                                foreach ($columns as $product => $countries) {
-                                                    foreach ($countries as $country => $col) {
-                                                        if (($ll[$product][$country] ?? '') === 'Open') {
-                                                            echo "<td>" . ($row[$col] ?? '') . "</td>";
-                                                        }
-                                                    }
-                                                }
-                                                echo "</tr>";
+                                        $todaySeen = false;
+                                        $result = $con1->query($sql);
+                                        if ($result) {
+                                            while ($row = mysqli_fetch_array($result, MYSQLI_ASSOC)) {
+                                                $rowDate = date('Y-m-d', strtotime($row['date']));
+                                                if ($rowDate === $date1) { $todaySeen = true; }
+                                                render_row($row['date'], $row, $columns, $ll);
                                             }
+                                            $result->close();
                                         }
 
-                                        if ($c == 1) {
-                                            $start_date = $date1 . " 00:00:00";
-                                            $end_date   = $date1 . " 23:59:59";
+                                        // Fallback: today is in range but the cron hasn't populated its row yet.
+                                        // Compute it live (slow, ~58 SPs) so there is no regression when the cron
+                                        // is momentarily behind. Short session cache avoids repeated slow loads.
+                                        $todayInRange = ($start_date1 <= $date1 && $date1 <= $end_date1);
+                                        if ($todayInRange && !$todaySeen) {
+                                            $start_dt = $date1 . ' 00:00:00';
+                                            $end_dt   = $date1 . ' 23:59:59';
 
-                                            // Cache today's SP results in session for 5 min to avoid ~58 sequential SP calls on every filter
                                             $act_cache_key = 'act_today_' . $date1 . '_h' . $hours;
                                             $act_cache_ts  = $act_cache_key . '_ts';
                                             $cache_valid   = isset($_SESSION[$act_cache_key], $_SESSION[$act_cache_ts])
@@ -273,90 +345,12 @@ if (isset($_POST['submit'])):
                                             if ($cache_valid) {
                                                 $today = $_SESSION[$act_cache_key];
                                             } else {
-                                            $today = [];
+                                                $today = compute_today_live($con1, $start_dt, $end_dt, $hours);
+                                                $_SESSION[$act_cache_key] = $today;
+                                                $_SESSION[$act_cache_ts]  = time();
+                                            }
 
-                                            $today['gamebar_france']      = call_sp($con1, 'fashionbardb_france.get_activation',      $start_date, $end_date, $hours);
-                                            $today['gamebar_gabon']        = call_sp($con1, 'fashionbardb_gabon.get_activation',        $start_date, $end_date, $hours);
-                                            $today['gamebar_turkey']       = call_sp($con1, 'fashionbardb_paygurutr.get_activation',    $start_date, $end_date, $hours);
-                                            $today['gamebar_switzerland']  = call_sp($con1, 'gamebar_ch_nth.get_activation',            $start_date, $end_date, $hours);
-                                            $today['11Players_KSA']        = call_sp($con1, 'fashionbardb_sa11.get_activation',         $start_date, $end_date, $hours);
-                                            $today['gamebar_pk']           = call_sp($con1, 'fashionbardb_pkzong.get_activation',       $start_date, $end_date, $hours);
-                                            $today['gamebar_ro']           = call_sp($con1, 'gamebar_ro.get_activation',               $start_date, $end_date, $hours);
-                                            $today['gamebar_finland']      = call_sp($con1, 'fashionbardb_finland.get_activation',      $start_date, $end_date, $hours);
-                                            $today['gamebar_slovenia']     = call_sp($con1, 'gamebar_slovenia.get_activation',          $start_date, $end_date, $hours);
-                                            $today['glambar_slovenia']     = call_sp($con1, 'glambar_slovenia.get_activation',          $start_date, $end_date, $hours);
-                                            $today['glambar_czech']        = call_sp($con1, 'fashionbardb_czglam.get_activation',       $start_date, $end_date, $hours);
-                                            $today['gamebar_ksa']          = call_sp($con1, 'fashionbardb_timwezain.get_activation',    $start_date, $end_date, $hours);
-                                            $today['gamebar_myanmar']      = call_sp($con1, 'fashionbardb_myanmartelenor.get_activation', $start_date, $end_date, $hours);
-                                            $today['gamebar_Mozambique']   = call_sp($con1, 'fashionbardb_mz.get_activation',           $start_date, $end_date, $hours);
-                                            $today['gamebar_paydashgr']    = call_sp($con1, 'fashionbardb_greece.get_activation',       $start_date, $end_date, $hours);
-                                            $today['Glambar_paydashgr']    = call_sp($con1, 'fashionbardb_greeceglambar.get_activation', $start_date, $end_date, $hours);
-                                            $today['gamebar_uae']          = call_sp($con1, 'fashionbardb_etisalat.get_activation',     $start_date, $end_date, $hours);
-                                            $today['gamebar_pl']           = call_sp($con1, 'fashionbardb_polandgame.get_activation',   $start_date, $end_date, $hours);
-                                            $today['gamebar_bahrain']      = call_sp($con1, 'fashionbardb_bh.get_activation',           $start_date, $end_date, $hours);
-                                            $today['glambar_thailand']     = call_sp($con1, 'fashionbardb_glam9005thailand.get_activation', $start_date, $end_date, $hours);
-                                            $today['gamebar_thailand']     = call_sp($con1, 'fashionbardb_game9305thailand.get_activation', $start_date, $end_date, $hours);
-                                            $today['gamebar_oman']         = call_sp($con1, 'fashionbardb_omooredoo.get_activation',    $start_date, $end_date, $hours);
-                                            $today['gamebar_kenya']        = call_sp($con1, 'fashionbardb_safaricom.get_activation',    $start_date, $end_date, $hours);
-                                            $today['gamebar_ghana']        = call_sp($con1, 'gamebar_ghairtel_mtech.getactivation',     $start_date, $end_date, $hours);
-                                            $today['11Players_nigeria']    = call_sp($con1, 'fashionbardb_ngmtn11.get_activation',      $start_date, $end_date, $hours);
-                                            $today['gamebar_Palestine']    = call_sp($con1, 'fashionbardb_psjw.get_activation',         $start_date, $end_date, $hours);
-                                            $today['11Players_kenya']      = call_sp($con1, 'fashionbardb_safaricompkm.get_activation', $start_date, $end_date, $hours);
-                                            $today['contest_qatar']        = call_sp($con1, 'contestdb_qaoo.get_activation',            $start_date, $end_date, $hours);
-                                            $today['gamebar_lk']           = call_sp($con1, 'gamebar_lk_dig.getactivation',             $start_date, $end_date, $hours);
-                                            $today['contest_bh']           = call_sp($con1, 'contestdb_bh.get_activation',              $start_date, $end_date, $hours);
-
-                                            // Multi-source aggregations
-                                            $today['gamebar_iraq']         = call_sp($con1, 'gamebar_iqzain_qg.getactivation',          $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'gamebar_iqmw_api.getactivation',            $start_date, $end_date, $hours);
-                                            $today['gamebar_qatar']        = call_sp($con1, 'fashionbardb_qatarooredoo.get_activation',  $start_date, $end_date, $hours);
-                                            $today['gamebar_egmon']        = call_sp($con1, 'gamebar_egypt.getactivation',               $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'gamebar_egypt_mondianew.getactivation',     $start_date, $end_date, $hours);
-                                            $today['gamebar_czech']        = call_sp($con1, 'fashionbardb_cz.get_activation',            $start_date, $end_date, $hours);
-                                            $today['Glambar_southafrica']  = call_sp($con1, 'fashionbardb_zaglam.get_activation',        $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'glambar_zamobixone.get_activation',         $start_date, $end_date, $hours);
-                                            $today['gamebar_southafrica']  = call_sp($con1, 'fashionbardb_za.get_activation',            $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'gamebar_zamobixone.get_activation',         $start_date, $end_date, $hours);
-                                            $today['gamebar_indoneisa']    = call_sp($con1, 'gamebardb_indonesia.get_activation',        $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'fashionbardb_idtelkomsel.get_activation',   $start_date, $end_date, $hours);
-                                            $today['gamebar_kuwait']       = call_sp($con1, 'fashionbardb_slakwzain.get_activation',     $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'fashionbardb_slakwstc.get_activation',      $start_date, $end_date, $hours);
-                                            $today['gamebar_jordan']       = call_sp($con1, 'fashionbardb_joorange.get_activation',      $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'fashionbardb_joumniah.get_activation',      $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'gamebar_jozain.getactivation',              $start_date, $end_date, $hours);
-                                            $today['gamebar_bangladesh']   = call_sp($con1, 'gamebar_bdgrameen.getactivation',           $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'fashionbardb_bdgp.get_activation',          $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'gamebar_bdrobi.getactivation',              $start_date, $end_date, $hours);
-                                            $today['gamebar_Nigeria']      = call_sp($con1, 'gamebar_nigeria_MMT.getactivation',         $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'fashionbardb_ngmtn.get_activation',         $start_date, $end_date, $hours);
-                                            $today['11Players_bd']         = call_sp($con1, '11players_bdrobi.getactivation',            $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, '11players_bdrobi_weekly.getactivation',     $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, '11players_bdrobi_monthly.getactivation',    $start_date, $end_date, $hours);
-                                            $today['gamebar_ethiopia']     = call_sp($con1, 'gamebar_ethopia.getactivation',             $start_date, $end_date, $hours);
-                                            $today['11players_ethiopia']   = call_sp($con1, '11players_ethopia.getactivation',           $start_date, $end_date, $hours);
-                                            $today['11players_ghana']      = call_sp($con1, 'fashionbardb_ghmtn11.get_activation',       $start_date, $end_date, $hours);
-                                            // Glambar Poland = sum of two separate SP sources
-                                            $today['glambar_poland']       = call_sp($con1, 'glambar_plteleaudio.getactivation',         $start_date, $end_date, $hours)
-                                                                           + call_sp($con1, 'fashionbardb_polandglam.get_activation',    $start_date, $end_date, $hours);
-
-                                            // Store in session cache
-                                            $_SESSION[$act_cache_key] = $today;
-                                            $_SESSION[$act_cache_ts]  = time();
-                                            } // end cache miss block
-
-                                            $cc = 1;
-                                            ?>
-                                            <tr>
-                                                <td><?php echo $date1; ?></td>
-                                                <?php foreach ($columns as $product => $countries): ?>
-                                                    <?php foreach ($countries as $country => $col): ?>
-                                                        <?php if (($ll[$product][$country] ?? '') === 'Open'): ?>
-                                                            <td><?php echo $today[$col] ?? 0; ?></td>
-                                                        <?php endif; ?>
-                                                    <?php endforeach; ?>
-                                                <?php endforeach; ?>
-                                            </tr>
-                                            <?php
+                                            render_row($date1, $today, $columns, $ll);
                                         }
                                         ?>
                                     </tbody>
