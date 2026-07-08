@@ -127,11 +127,16 @@ if (!$is_ajax) {
 <?php include("includes/top_navigation.php"); ?>
 <div class="hp-content">
 
-  <!-- Filter card -->
-  <div class="hp-card hp-filter-card">
+
+
+ <div class="hp-card hp-filter-card">
     <div class="hp-card-header">
       <h4><i class="fa fa-filter"></i> Filter Options</h4>
+      <span id="last-updated-ts" style="float:right; color:#fff; font-size:13px; margin-top:6px;">
+        <i class="fa fa-clock-o"></i> Last updated: --
+      </span>
     </div>
+    
     <div class="hp-card-body">
       <form class="form-horizontal" name="formname" id="formname" method="post">
         <div class="row">
@@ -415,9 +420,43 @@ if ($is_ajax) {
 </div><!-- /.hp-main -->
 
 <?php $noAutoLoad = true; include("includes/footer.php"); ?>
-
 <script>
 $(document).ready(function () {
+
+    function generateReport() {
+        var start_date = $('input[name="start_date"]').val();
+        var end_date   = $('input[name="end_date"]').val();
+        var hours      = $('select[name="hours"]').val();
+
+        $.ajax({
+            url: window.location.pathname,   // same page
+            type: 'POST',
+            data: {
+                start_date: start_date,
+                end_date:   end_date,
+                hours:      hours,
+                submit:     1
+            },
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            beforeSend: function () {
+                $('#last-updated-ts').html('<i class="fa fa-spinner fa-spin"></i> Refreshing...');
+            },
+            success: function (html) {
+                $('#ajax-output').html(html);
+                var now = new Date();
+                var ts = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                $('#last-updated-ts').html('<i class="fa fa-clock-o"></i> Last updated: ' + ts);
+            },
+            error: function () {
+                $('#last-updated-ts').html('<i class="fa fa-exclamation-triangle"></i> Refresh failed');
+            }
+        });
+    }
+    // Run once on page load so the timestamp is populated immediately
+    generateReport();
+    // Then auto-refresh every 10 minutes (600000 ms)
+    setInterval(generateReport, 600000);
+
     // Toggle Manual Activation Insert card
     $('#manual-cron-header').on('click', function () {
         var $body = $('#manual-cron-body');
