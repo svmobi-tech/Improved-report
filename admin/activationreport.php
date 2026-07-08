@@ -4,7 +4,7 @@ ob_start();
 $pageTitle = 'Activation Report';
 $pageIcon  = 'fa-bolt';
 
-include("includes/check_session.php");
+if (session_status() === PHP_SESSION_NONE) session_start();
 date_default_timezone_set("Asia/Kolkata");
 
 require_once __DIR__ . '/includes/config.php';
@@ -29,14 +29,12 @@ while ($row1 = mysqli_fetch_array($result1)) {
     $kk[$row1['Product']] = $row1['cc'];
 }
 $result1->close();
-$con1->next_result();
 
 $result1 = $con1->query("select * from {$report}.activationsetting");
 while ($row1 = mysqli_fetch_array($result1)) {
     $ll[$row1['Product']][$row1['Country']] = $row1['Action'];
 }
 $result1->close();
-$con1->next_result();
 
 // Maps each product/country to its column key in activation_report table.
 // 'glambar_poland' is a virtual key = glambar_pl + glambar_pldmc (precomputed per row).
