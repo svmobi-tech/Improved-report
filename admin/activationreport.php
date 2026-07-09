@@ -305,12 +305,12 @@ if (isset($_POST['submit'])):
                                             $today['gamebar_ghana']        = call_sp($con1, 'gamebar_ghairtel_mtech.getactivation',     $start_date, $end_date, $hours);
                                             $today['11Players_nigeria']    = call_sp($con1, 'fashionbardb_ngmtn11.get_activation',      $start_date, $end_date, $hours);
                                             $today['gamebar_Palestine']    = call_sp($con1, 'fashionbardb_psjw.get_activation',         $start_date, $end_date, $hours);
-                                            $today['11Players_kenya']      = call_sp($con1, 'fashionbardb_safaricompkm.get_activation', $start_date, $end_date, $hours);
+                                            $today['11Players_kenya']      = call_sp($con1, 'fashionbardb_safaricompkm_new.get_activation', $start_date, $end_date, $hours);
                                             $today['contest_qatar']        = call_sp($con1, 'contestdb_qaoo.get_activation',            $start_date, $end_date, $hours);
                                             $today['gamebar_lk']           = call_sp($con1, 'gamebar_lk_dig.getactivation',             $start_date, $end_date, $hours);
                                             $today['contest_bh']           = call_sp($con1, 'contestdb_bh.get_activation',              $start_date, $end_date, $hours);
 
-                                            // Multi-source aggregations
+                                            // Multi-source aggregations fashionbardb_safaricompkm
                                             $today['gamebar_iraq']         = call_sp($con1, 'gamebar_iqzain_qg.getactivation_1',          $start_date, $end_date, $hours)
                                                                            + call_sp($con1, 'gamebar_iqmw_api.getactivation_1',            $start_date, $end_date, $hours);
                                             $today['gamebar_qatar']        = call_sp($con1, 'fashionbardb_qatarooredoo.get_activation',  $start_date, $end_date, $hours);
