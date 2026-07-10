@@ -884,7 +884,7 @@ function action_trend_data(mysqli $con): void
         [$start_date,    $end_date,    $advid,    $type],
         $url
     );
-echo $start_date,    $end_date,    $advid,    $type; exit;
+
     $res = mysqli_query($con, $query);
     if (!$res) {
         echo '<div class="hp-card" style="margin-top:16px">
