@@ -901,8 +901,7 @@ function action_trend_data(mysqli $con): void
     $advname  = [];
     $dt       = [];
     $prevdate = '';
-echo '<pre>';
-print_r(mysqli_fetch_array($res));exit;
+
     while ($row = mysqli_fetch_array($res)) {
         if ($prevdate === '') $prevdate = $row['dt'];
         if ($prevdate !== $row['dt']) {
