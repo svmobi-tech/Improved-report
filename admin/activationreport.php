@@ -285,15 +285,31 @@ if (isset($_POST['submit'])):
                                             $start_date = $date1 . " 00:00:00";
                                             $end_date   = $date1 . " 23:59:59";
 
-                                            // Cache today's SP results in session for 5 min to avoid ~58 sequential SP calls on every filter
-                                            $act_cache_key = 'act_today_' . $date1 . '_h' . $hours;
-                                            $act_cache_ts  = $act_cache_key . '_ts';
-                                            $cache_valid   = isset($_SESSION[$act_cache_key], $_SESSION[$act_cache_ts])
-                                                          && (time() - $_SESSION[$act_cache_ts]) < 300;
+                                            // Cache today's SP results in a shared file for 5 min, so ALL users/sessions
+                                            // reuse one computation instead of each session re-running ~46 SP calls.
+                                            $act_cache_ttl  = 300;
+                                            $act_cache_key  = 'act_today_' . $date1 . '_h' . $hours;
+                                            $act_cache_dir  = __DIR__ . '/../cache';
+                                            if (!is_dir($act_cache_dir)) { @mkdir($act_cache_dir, 0775, true); }
+                                            $act_cache_file = $act_cache_dir . '/' . $act_cache_key . '.json';
+                                            $act_lock_file  = $act_cache_dir . '/' . $act_cache_key . '.lock';
 
-                                            if ($cache_valid) {
-                                                $today = $_SESSION[$act_cache_key];
-                                            } else {
+                                            $act_cache_fresh = static function () use ($act_cache_file, $act_cache_ttl): bool {
+                                                return is_file($act_cache_file) && (time() - filemtime($act_cache_file)) < $act_cache_ttl;
+                                            };
+
+                                            $today = null;
+                                            if ($act_cache_fresh()) {
+                                                $today = json_decode(file_get_contents($act_cache_file), true);
+                                            }
+
+                                            if ($today === null) {
+                                            $act_lock_fp = fopen($act_lock_file, 'c');
+                                            if ($act_lock_fp && flock($act_lock_fp, LOCK_EX | LOCK_NB)) {
+                                                // Got the lock: re-check freshness in case another process just finished.
+                                                if ($act_cache_fresh()) {
+                                                    $today = json_decode(file_get_contents($act_cache_file), true);
+                                                } else {
                                             $today = [];
 
                                             $today['gamebar_france']      = call_sp_open($con1, $openCols, 'gamebar_france',     'fashionbardb_france.get_activation',      $start_date, $end_date, $hours);
@@ -360,10 +376,24 @@ if (isset($_POST['submit'])):
                                             $today['glambar_poland']       = call_sp_open($con1, $openCols, 'glambar_poland', 'glambar_plteleaudio.getactivation',         $start_date, $end_date, $hours)
                                                                            + call_sp_open($con1, $openCols, 'glambar_poland', 'fashionbardb_polandglam.get_activation',    $start_date, $end_date, $hours);
 
-                                            // Store in session cache
-                                            $_SESSION[$act_cache_key] = $today;
-                                            $_SESSION[$act_cache_ts]  = time();
-                                            } // end cache miss block
+                                            // Store in shared file cache
+                                            file_put_contents($act_cache_file, json_encode($today), LOCK_EX);
+                                                } // end cache-miss recompute
+                                                flock($act_lock_fp, LOCK_UN);
+                                                fclose($act_lock_fp);
+                                            } else {
+                                                // Another process is already recomputing — wait briefly for it, else serve stale/empty.
+                                                if ($act_lock_fp) { fclose($act_lock_fp); }
+                                                $act_waited = 0;
+                                                while ($act_waited < 5000000 && !$act_cache_fresh()) {
+                                                    usleep(200000);
+                                                    $act_waited += 200000;
+                                                }
+                                                $today = is_file($act_cache_file)
+                                                    ? json_decode(file_get_contents($act_cache_file), true)
+                                                    : [];
+                                            }
+                                            } // end cache-miss branch
 
                                             $cc = 1;
                                             ?>
