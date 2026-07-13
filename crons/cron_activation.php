@@ -168,7 +168,7 @@ for ($i = 1; $i <= 24; $i++) {
     $glambar_pl         = call_proc($con1, "call glambar_plteleaudio.getactivation('{$start_date}','{$end_date}',{$i})", $activation);
     $glambar_pldmc      = call_proc($con1, "call fashionbardb_polandglam.get_activation('{$start_date}','{$end_date}',{$i})", $activation);
 
-    $Players_kenya      = call_proc($con1, "call fashionbardb_safaricompkm.get_activation('{$start_date}','{$end_date}',{$i})", $activation);
+    $Players_kenya      = call_proc($con1, "call fashionbardb_safaricompkm_new.get_activation('{$start_date}','{$end_date}',{$i})", $activation);
     $players_ng         = call_proc($con1, "call fashionbardb_ngmtn11.get_activation('{$start_date}','{$end_date}',{$i})", $activation);
     $players_et         = call_proc($con1, "call 11players_ethopia.getactivation('{$start_date}','{$end_date}',{$i})", $activation);
 
