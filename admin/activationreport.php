@@ -97,6 +97,16 @@ $columns = [
 ];
 
 
+function call_sp(mysqli $con, string $db_proc, string $start, string $end, string $hours): int {
+    $result = $con->query("call {$db_proc}('{$start}', '{$end}', {$hours})");
+    if (!$result) { $con->next_result(); return 0; }
+    $act = 0;
+    while ($row = mysqli_fetch_array($result)) { $act = (int)($row['act'] ?? 0); }
+    $result->close();
+    $con->next_result();
+    return $act;
+}
+
 // Detect AJAX request (sent by jQuery with X-Requested-With header).
 $is_ajax = (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest');
 
@@ -264,6 +274,11 @@ if (isset($_POST['submit'])):
                                             $result = $con1->query($sql);
                                             while ($row = mysqli_fetch_array($result)) {
                                                 $row['glambar_poland'] = ($row['glambar_pl'] ?? 0) + ($row['glambar_pldmc'] ?? 0);
+                                                // Iraq: live table data unreliable — fetch via SP
+                                                $iraq_start = $date1 . ' 00:00:00';
+                                                $iraq_end   = $date1 . ' 23:59:59';
+                                                $row['gamebar_iraq'] = call_sp($con1, 'gamebar_iqzain_qg.getactivation_1', $iraq_start, $iraq_end, $hours)
+                                                                     + call_sp($con1, 'gamebar_iqmw_api.getactivation_1',   $iraq_start, $iraq_end, $hours);
                                                 echo "<tr><td>{$row['date']}</td>";
                                                 foreach ($columns as $product => $countries) {
                                                     foreach ($countries as $country => $col) {
