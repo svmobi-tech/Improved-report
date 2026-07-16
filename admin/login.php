@@ -150,7 +150,7 @@ if (isset($_POST['submit'])) {
         </div>
       </div>
     <label>
-        <input type="checkbox" name="trust_device" value="1"> Remember this device for 90 days
+        <!-- <input type="checkbox" name="trust_device" value="1"> Remember this device for 90 days -->
     </label>
       <button type="submit" name="submit" class="btn">Sign In</button>
 
