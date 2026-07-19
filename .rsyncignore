@@ -1,0 +1,59 @@
+# Files rsync must NEVER transfer or DELETE on the server.
+# These are gitignored (they live only on the server), so --delete must
+# leave them untouched. Mirrors the .gitignore. Character classes ([jJ])
+# make extension matching case-insensitive.
+
+# Repo/deploy metadata — never ship to the web root (code is at repo root).
+# Shipping .git to a public docroot is a security risk.
+.git/
+.github/
+.rsyncignore
+README.md
+
+# Images
+*.[jJ][pP][gG]
+*.[jJ][pP][eE][gG]
+*.[pP][nN][gG]
+*.[gG][iI][fF]
+*.[bB][mM][pP]
+*.[tT][iI][fF]
+*.[tT][iI][fF][fF]
+*.[wW][eE][bB][pP]
+*.[sS][vV][gG]
+*.[iI][cC][oO]
+*.[pP][sS][dD]
+*.[aA][iI]
+*.[eE][pP][sS]
+*.[hH][eE][iI][cC]
+*.[hH][eE][iI][fF]
+
+# Videos
+*.[mM][pP]4
+*.[aA][vV][iI]
+*.[mM][oO][vV]
+*.[mM][kK][vV]
+*.[wW][mM][vV]
+*.[fF][lL][vV]
+*.[wW][eE][bB][mM]
+*.[mM]4[vV]
+*.[mM][pP][gG]
+*.[mM][pP][eE][gG]
+
+# Secrets / env
+.env
+.env.*
+
+# Server-managed runtime folders (uploads, logs, cache, sessions)
+uploads/
+logs/
+log/
+cache/
+tmp/
+temp/
+sessions/
+error_log
+*.[lL][oO][gG]
+
+# Dependencies installed on the server, not in git
+vendor/
+node_modules/

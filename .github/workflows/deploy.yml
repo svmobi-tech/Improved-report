@@ -1,0 +1,31 @@
+name: Deploy to server
+
+# Deploys on every push to main. Also runnable manually from the Actions tab.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via rsync over SSH
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          # Same behaviour as the gamebar pipeline:
+          # --checksum : only content-changed files transfer
+          # --delete   : mirror git exactly (create/edit/delete all sync)
+          # --exclude-from : protect gitignored server-only files
+          # NOTE: target is a Windows server running cwRsync; DEPLOY_PATH
+          #       must be a cygwin-style path, e.g. /cygdrive/c/xampp/htdocs/report
+          switches: -avzr --checksum --delete --exclude-from=.rsyncignore
+          path: ./
+          remote_path: ${{ secrets.DEPLOY_PATH }}
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_port: ${{ secrets.SSH_PORT }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key:  ${{ secrets.SSH_KEY }}
