@@ -3757,7 +3757,6 @@ function action_gamezop_partners(mysqli $con): void
 function action_gamezop_report_load(mysqli $con): void
 {
     header('Content-Type: application/json');
-
     $gamezop_token = '8f222d9c-4207-4654-bf85-55e65ae6ed0c';
 
     $userid     = (int)($_POST['userid']     ?? 0);
@@ -3873,8 +3872,9 @@ function action_gamezop_report_load(mysqli $con): void
     $chart_labels = [];
     $chart_data   = [];
     $stmt3 = $con->prepare(
-        "SELECT reportdate, totalrevenue FROM svmobigamesreport.report
+        "SELECT reportdate, SUM(totalrevenue) AS totalrevenue FROM svmobigamesreport.report
          WHERE offerid = ? AND reportdate >= DATE_SUB(CURDATE(), INTERVAL 5 DAY)
+         GROUP BY reportdate
          ORDER BY reportdate ASC"
     );
     $stmt3->bind_param('s', $property_id);
@@ -3889,9 +3889,11 @@ function action_gamezop_report_load(mysqli $con): void
     // Per-day rows from stored report table for the selected range
     $rows  = [];
     $stmt4 = $con->prepare(
-        "SELECT *,reportdate, totalrevenue, impressions, ecpm, clicks
+        "SELECT reportdate, SUM(totalrevenue) AS totalrevenue,
+                SUM(impressions) AS impressions, AVG(ecpm) AS ecpm, SUM(clicks) AS clicks
          FROM svmobigamesreport.report
          WHERE offerid = ? AND reportdate >= ? AND reportdate <= ?
+         GROUP BY reportdate
          ORDER BY reportdate ASC"
     );
     $stmt4->bind_param('sss', $property_id, $start_date, $end_date);
@@ -3928,7 +3930,6 @@ function action_gamezop_report_load(mysqli $con): void
 function action_gamezop_all_partners_report(mysqli $con): void
 {
     header('Content-Type: application/json');
-
     $start_date = trim($_POST['start_date'] ?? '');
     $end_date   = trim($_POST['end_date']   ?? '');
 
@@ -3979,9 +3980,11 @@ function action_gamezop_all_partners_report(mysqli $con): void
 
         // Per-day rows from stored report table
         $s3 = $con->prepare(
-            "SELECT reportdate, totalrevenue, impressions, ecpm, clicks
+            "SELECT reportdate, SUM(totalrevenue) AS totalrevenue,
+                    SUM(impressions) AS impressions, AVG(ecpm) AS ecpm, SUM(clicks) AS clicks
              FROM svmobigamesreport.report
              WHERE offerid = ? AND reportdate BETWEEN ? AND ?
+             GROUP BY reportdate
              ORDER BY reportdate ASC"
         );
         if (!$s3) continue;
@@ -3989,6 +3992,7 @@ function action_gamezop_all_partners_report(mysqli $con): void
         $s3->execute();
         $res3 = $s3->get_result();
         $rows = [];
+      
         while ($r3 = $res3->fetch_assoc()) {
             $total_rev = round((float)$r3['totalrevenue'], 2);
             $rows[] = [

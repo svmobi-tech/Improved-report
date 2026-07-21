@@ -219,7 +219,6 @@ function gzSearch() {
     var ymdStart = toYMD($('#gz-start').val());
     var ymdEnd   = toYMD($('#gz-end').val());
     var partner  = $('#gz-partner').val();
-
     if (ymdStart > moment().format('YYYY-MM-DD') || ymdEnd > moment().format('YYYY-MM-DD')) {
         alert('Future dates are not allowed.');
         return;
