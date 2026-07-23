@@ -9,13 +9,22 @@ if (empty($_SESSION['username'])) {
     exit;
 }
 
-// PDO connection (adnetwork_admin) — ob_start guards against stray output from connection.php
+// Load centralized config (defines DB_HOST, DB_USER, DB_PASS, DB_PORT constants via .env)
 $conn = null;
 ob_start();
-try {
-    include(dirname(dirname(dirname(__DIR__))) . '/adnetwork_admin/includes/connection.php');
-} catch (Exception $e) { /* connection failed, $conn stays null */ }
-ob_end_clean();
+try { require_once dirname(__DIR__) . '/includes/config.php'; } catch (Throwable $e) {}
+ob_get_clean();
+
+if (defined('DB_HOST')) {
+    try {
+        $conn = new PDO(
+            'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';charset=utf8',
+            DB_USER,
+            DB_PASS,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+    } catch (PDOException $e) { $conn = null; }
+}
 
 header('Content-Type: application/json');
 

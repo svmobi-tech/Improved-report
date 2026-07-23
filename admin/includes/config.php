@@ -24,6 +24,7 @@ define('DB_PROD_HOST', $_ENV['DB_PROD_HOST'] ?? '10.34.240.214');
 define('DB_PROD_PORT', $_ENV['DB_PROD_PORT'] ?? '3306');
 
 $con = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
 
 
 $con55 = mysqli_connect(
