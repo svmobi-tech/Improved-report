@@ -53,6 +53,7 @@ temp/
 sessions/
 error_log
 *.[lL][oO][gG]
+dev-test.php
 
 # Dependencies installed on the server, not in git
 vendor/
