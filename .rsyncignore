@@ -54,6 +54,7 @@ sessions/
 error_log
 *.[lL][oO][gG]
 dev-test.php
+admin/
 
 # Dependencies installed on the server, not in git
 vendor/
