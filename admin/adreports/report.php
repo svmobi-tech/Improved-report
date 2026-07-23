@@ -17,10 +17,19 @@ include('../includes/check_session.php');
 // PDO connection to load country list on page load
 $conn = null;
 ob_start();
-try {
-     require_once dirname(__DIR__) . '/includes/config.php';
-} catch (Exception $e) {}
-ob_end_clean();
+try { require_once dirname(__DIR__) . '/includes/config.php'; } catch (Throwable $e) {}
+ob_get_clean();
+
+if (defined('DB_HOST')) {
+    try {
+        $conn = new PDO(
+            'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';charset=utf8',
+            DB_USER,
+            DB_PASS,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+    } catch (PDOException $e) { $conn = null; }
+}
 
 $countries = [];
 if ($conn) {
