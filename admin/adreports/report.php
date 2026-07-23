@@ -18,7 +18,7 @@ include('../includes/check_session.php');
 $conn = null;
 ob_start();
 try {
-    include(dirname(dirname(dirname(__DIR__))) . '/adnetwork_admin/includes/connection.php');
+     require_once dirname(__DIR__) . '/includes/config.php';
 } catch (Exception $e) {}
 ob_end_clean();
 
