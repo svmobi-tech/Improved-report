@@ -2487,7 +2487,7 @@ function action_dashboard_data(mysqli $con): void
     $sel_year     = (int)($_POST['year']    ?? date('Y'));
     $sel_month    = str_pad($_POST['month'] ?? date('m'), 2, '0', STR_PAD_LEFT);
     $sel_currency = $_POST['currency']      ?? 'INR';
-    $devide       = ($sel_currency === 'INR') ? 1 : 90;
+    $devide       = ($sel_currency === 'INR') ? 1 : 94;
 
     $start_date1   = "{$sel_year}-{$sel_month}-01";
     $enddate       = date('Y-m-t', strtotime($start_date1));
