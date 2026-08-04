@@ -326,7 +326,7 @@ function action_subdash_data(mysqli $con): void
     $sel_year     = (int)($_POST['year']     ?? date('Y'));
     $sel_month    = $_POST['month']           ?? date('m');
     $sel_currency = $_POST['currency']        ?? 'INR';
-    $devide       = ($sel_currency === 'INR') ? 1 : 87;
+    $devide       = ($sel_currency === 'INR') ? 1 : 94;
 
     if (!$sel_year || !$sel_month) {
         echo '<div style="padding:40px;text-align:center;color:#e53e3e">
@@ -397,7 +397,6 @@ function action_subdash_data(mysqli $con): void
             $rows[] = $row;
         }
     }
-
     // Get last month's revenue per operator+product from mainreport (always available)
     $lm_sql = "
         SELECT lm.product, lm.operator,
