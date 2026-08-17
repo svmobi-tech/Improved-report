@@ -149,7 +149,8 @@ for ($i = 1; $i <= 24; $i++) {
 
     // ── Africa ────────────────────────────────────────────────────────────────
     $gamebar_kenya      = call_proc($con1, "call fashionbardb_safaricom.get_activation('{$start_date}','{$end_date}',{$i})", $activation);
-    $gamebar_ghana      = call_proc($con1, "call gamebar_ghairtel_mtech.getactivation('{$start_date}','{$end_date}',{$i})", $activation);
+    // $gamebar_ghana      = call_proc($con1, "call gamebar_ghairtel_mtech.getactivation('{$start_date}','{$end_date}',{$i})", $activation);
+    $gamebar_ghana      = call_proc($con1, "call fashionbardb_ghmtn.get_activation('{$start_date}','{$end_date}',{$i})", $activation);
     $gamebar_Nigeriammt = call_proc($con1, "call gamebar_nigeria_MMT.getactivation('{$start_date}','{$end_date}',{$i})", $activation);
     $gamebar_Nigeriamtn = call_proc($con1, "call fashionbardb_ngmtn.get_activation('{$start_date}','{$end_date}',{$i})", $activation);
     $gamebar_Nigeria    = $gamebar_Nigeriamtn + $gamebar_Nigeriammt;
