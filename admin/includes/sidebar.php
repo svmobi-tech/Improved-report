@@ -89,6 +89,10 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF'])); // 'admin' or 'adreports
         <li class="<?php echo $currentPage === 'apicharge.php' ? 'active' : ''; ?>">
           <a href="apicharge.php"><i class="fa fa-percent"></i> API Charging %</a>
         </li>
+        <li>
+          <a href="http://35.247.174.49/gamebar/aig/report/api_campaign.php" target="_blank">
+            <i class="fa fa-ban"></i>Campaign Blocking</a>
+        </li>
       </ul>
     </li>
     <?php
