@@ -1,7 +1,8 @@
 <?php
+require_once __DIR__ . '/../admin/includes/config.php';
 //$con=mysql_connect("10.125.0.50","webserveruser","K&dN&r4a8N@du0") or die(mysql_error());//cluster1
 //$con1=mysqli_connect("10.125.0.50","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster1
-$con2=mysqli_connect('10.34.240.214','webserveruser','K&dN&r4a8N@du0') or die(mysql_error());//cluster 2
+$con2=mysqli_connect(DB_PROD_HOST, DB_USER, DB_PASS) or die(mysql_error());//cluster 2
 
 $con1=$con2;
 

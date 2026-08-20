@@ -1,14 +1,15 @@
 <?php
+require_once __DIR__ . '/../admin/includes/config.php';
 ini_set('max_execution_time', 100000000000);
 
 ini_set('mysql.connect_timeout', 1000000000000);
 ini_set('default_socket_timeout', 100000000000);
-$con1=mysqli_connect('10.125.1.51:3308','webserveruser','K&dN&r4a8N@du0') or die(mysqli_error());//cluster 2
+$con1=mysqli_connect(DB_PROD_HOST3 . ':' . DB_PROD_PORT3, DB_USER, DB_PASS) or die(mysqli_error());//cluster 2
 
 $con2=$con1;
 //$con=mysql_connect("10.125.1.51","productionuser","Zb8#fNIsXnoP876") or die(mysql_error());//cluster2
-$con=mysql_connect('10.125.1.51:3308','webserveruser','K&dN&r4a8N@du0');
-$con6=mysqli_connect('10.125.1.51:3308','webserveruser','K&dN&r4a8N@du0');
+$con=mysql_connect(DB_PROD_HOST3 . ':' . DB_PROD_PORT3, DB_USER, DB_PASS);
+$con6=mysqli_connect(DB_PROD_HOST3 . ':' . DB_PROD_PORT3, DB_USER, DB_PASS);
 date_default_timezone_set("Asia/Calcutta");
 echo  $date1=date('Y-m-d',strtotime("-18 days"));
 $startdate=$date1.' 00:00:00';

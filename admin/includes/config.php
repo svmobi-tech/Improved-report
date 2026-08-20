@@ -23,6 +23,11 @@ define('DB_PORT', $_ENV['DB_PORT'] ?? '3306');
 define('DB_PROD_HOST', $_ENV['DB_PROD_HOST'] ?? '10.34.240.214');
 define('DB_PROD_HOST2', $_ENV['DB_PROD_HOST2'] ?? '10.34.240.3');
 define('DB_PROD_PORT', $_ENV['DB_PROD_PORT'] ?? '3306');
+define('DB_PROD_HOST3', $_ENV['DB_PROD_HOST3'] ?? '10.125.1.51');
+define('DB_PROD_PORT3', $_ENV['DB_PROD_PORT3'] ?? '3308');
+define('DB_PROD_HOST4', $_ENV['DB_PROD_HOST4'] ?? '43.231.124.193');
+define('DB_PROD_PORT4', $_ENV['DB_PROD_PORT4'] ?? '3307');
+define('DB_PROD_PASS4', $_ENV['DB_PROD_PASS4'] ?? 'K&dN&r4a8N@du567');
 
 $con = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);

@@ -8,7 +8,7 @@ con.query('SET GLOBAL interactive_timeout=28800');
 */
 $con2=$con1;
 //$con=mysql_connect("10.125.1.51","productionuser","Zb8#fNIsXnoP876") or die(mysql_error());//cluster2
-$con=mysql_connect('10.125.1.51','webserveruser','K&dN&r4a8N@du0');
+$con=mysql_connect(DB_PROD_HOST3, DB_USER, DB_PASS);
 
 date_default_timezone_set("Asia/Calcutta");
 echo  $date1=date('Y-m-d',strtotime("-1 days"));

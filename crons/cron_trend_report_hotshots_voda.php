@@ -1,7 +1,8 @@
 <?php
+require_once __DIR__ . '/../admin/includes/config.php';
 try{
 //$con1=mysqli_connect("10.125.0.50","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster1
-$con2=mysqli_connect('10.125.1.51:3308','webserveruser','K&dN&r4a8N@du0') or die(mysqli_error());//cluster 2
+$con2=mysqli_connect(DB_PROD_HOST3 . ':' . DB_PROD_PORT3, DB_USER, DB_PASS) or die(mysqli_error());//cluster 2
 $con1=$con2;
 date_default_timezone_set("Asia/Calcutta");
 $date1=date('Y-m-d',strtotime("-1 days"));
