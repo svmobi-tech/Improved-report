@@ -21,6 +21,7 @@ define('DB_PASS', $_ENV['DB_PASS'] ?? '');
 define('DB_NAME', $_ENV['DB_NAME'] ?? 'gamebardb_vodafone_qatar_report');
 define('DB_PORT', $_ENV['DB_PORT'] ?? '3306');
 define('DB_PROD_HOST', $_ENV['DB_PROD_HOST'] ?? '10.34.240.214');
+define('DB_PROD_HOST2', $_ENV['DB_PROD_HOST2'] ?? '10.34.240.3');
 define('DB_PROD_PORT', $_ENV['DB_PROD_PORT'] ?? '3306');
 
 $con = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
