@@ -1,7 +1,8 @@
 <?php
+require_once __DIR__ . '/../admin/includes/config.php';
 
 
-$con1=mysqli_connect('10.125.1.51','webserveruser','K&dN&r4a8N@du0') or die(mysqli_error());//cluster 2
+$con1=mysqli_connect(DB_PROD_HOST3, DB_USER, DB_PASS) or die(mysqli_error());//cluster 2
 /*con.query('SET GLOBAL connect_timeout=28800');
 con.query('SET GLOBAL wait_timeout=28800');
 con.query('SET GLOBAL interactive_timeout=28800');

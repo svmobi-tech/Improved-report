@@ -1,7 +1,8 @@
 <?php
+require_once __DIR__ . '/../admin/includes/config.php';
 
-$con1=mysqli_connect('10.125.1.51','webserveruser','K&dN&r4a8N@du0') or die(mysqli_error());//cluster 2
-$con=mysql_connect('10.125.1.51','webserveruser','K&dN&r4a8N@du0');
+$con1=mysqli_connect(DB_PROD_HOST3, DB_USER, DB_PASS) or die(mysqli_error());//cluster 2
+$con=mysql_connect(DB_PROD_HOST3, DB_USER, DB_PASS);
 $gamebar_all_Greece='gamebardb_greecevf';
 $report='gamebardb_vodafone_qatar_report';
  $sql="call ".$gamebar_all_Greece.".grmainreport('2019-05-01 00:00:00','2019-05-04 23:59:59','')";
