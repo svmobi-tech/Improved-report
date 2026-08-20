@@ -3128,6 +3128,7 @@ function action_callback_report_load(mysqli $con): void
 
     while ($res_q && $qrow = mysqli_fetch_assoc($res_q)) {
         $op_name = $qrow['operator'];
+        echo "<pre>"; var_dump($qrow);
         if (!in_array($op_name, $op_list)) $op_list[] = $op_name;
         $cb_data[$op_name] = [];
         $pc_data[$op_name] = [];
