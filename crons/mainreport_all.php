@@ -22,7 +22,7 @@ date_default_timezone_set("Asia/Calcutta");
 // Daily log file: one file per run-date, e.g. logs/mainreport_all_2026-05-30.log.
 // Timezone is set first so the filename date matches the in-line timestamps.
 // Existing single-file logs are left untouched; rotation/cleanup is handled externally.
-$logFile = __DIR__ . '/../../logs/mainreport_all_' . date('Y-m-d') . '.log';
+$logFile = __DIR__ . '/../logs/mainreport_all_' . date('Y-m-d') . '.log';
 $logDebug = true;
 if (!is_dir(dirname($logFile))) {
 	@mkdir(dirname($logFile), 0775, true);
