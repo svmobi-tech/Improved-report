@@ -3135,7 +3135,6 @@ function action_callback_report_load(mysqli $con): void
             'Ghana_VF',
             'Iraq_Korek_SVS',
             'Nigeria_Airtel',
-            'Slovenia'
         )
         AND perform_callback != '' AND perform_callback IS NOT NULL"
         : "product='{$product}' AND operator='{$operator}' LIMIT 1";
@@ -3314,7 +3313,6 @@ function action_callback_report_operators(mysqli $con): void
             'Ghana_VF',
             'Iraq_Korek_SVS',
             'Nigeria_Airtel',
-            'Slovenia'
          )
          "
     );
@@ -3387,7 +3385,6 @@ function action_callback_report_advertisers(mysqli $con): void
             'Ghana_VF',
             'Iraq_Korek_SVS',
             'Nigeria_Airtel',
-            'Slovenia'
          )
          "
     );
