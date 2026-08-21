@@ -3126,7 +3126,16 @@ function action_callback_report_load(mysqli $con): void
             'KSA_GamePub_Weekly_STC',
             'KSA_Mobily_Weekly_Gamestation',
             'KSA_Zain_Weekly_Gamestation',
-            'KSA_Stc_Weekly_Gamestation'
+            'KSA_Stc_Weekly_Gamestation',
+            'Egypt_Mondia_Orange',
+            'Egypt_Mondia_all',
+            'Slovenia',
+            'Romania',
+            'Egypt_Mondia_api',
+            'Ghana_VF',
+            'Iraq_Korek_SVS',
+            'Nigeria_Airtel',
+            'Slovenia'
         )
         AND perform_callback != '' AND perform_callback IS NOT NULL"
         : "product='{$product}' AND operator='{$operator}' LIMIT 1";
@@ -3294,7 +3303,20 @@ function action_callback_report_operators(mysqli $con): void
     $res_q = mysqli_query($con,
         "SELECT operator, perform_callback, perform_centtocg
          FROM {$report}.mainreportquery
-         WHERE product = '{$product}'"
+         WHERE product = '{$product}'
+         AND operator NOT IN
+         (
+            'Egypt_Mondia_Orange',
+            'Egypt_Mondia_all',
+            'Slovenia',
+            'Romania',
+            'Egypt_Mondia_api',
+            'Ghana_VF',
+            'Iraq_Korek_SVS',
+            'Nigeria_Airtel',
+            'Slovenia'
+         )
+         "
     );
 
     $ops = [];
@@ -3354,7 +3376,20 @@ function action_callback_report_advertisers(mysqli $con): void
     $res_q = mysqli_query($con,
         "SELECT operator, perform_callback, perform_centtocg
          FROM {$report}.mainreportquery
-         WHERE product = '{$product}'"
+         WHERE product = '{$product}'
+         AND operator NOT IN
+         (
+            'Egypt_Mondia_Orange',
+            'Egypt_Mondia_all',
+            'Slovenia',
+            'Romania',
+            'Egypt_Mondia_api',
+            'Ghana_VF',
+            'Iraq_Korek_SVS',
+            'Nigeria_Airtel',
+            'Slovenia'
+         )
+         "
     );
 
     $advnames = [];
