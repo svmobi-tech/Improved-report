@@ -1,10 +1,11 @@
 <?php
+require_once __DIR__ . '/../admin/includes/config.php';
 
 try{
 	
 	
 //$con1=mysqli_connect("10.125.0.50","webserveruser","K&dN&r4a8N@du0"); //cluster1
-$con2=mysqli_connect("43.231.124.193:3307","webserveruser","K&dN&r4a8N@du567") ; //cluster 2
+$con2=mysqli_connect(DB_PROD_HOST4 . ':' . DB_PROD_PORT4, DB_USER, DB_PROD_PASS4) ; //cluster 2
  $con1=$con2;
  date_default_timezone_set("Asia/Calcutta");
 $date1=date('Y-m-d',strtotime("-1 days"));

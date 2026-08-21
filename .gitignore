@@ -61,7 +61,8 @@ nbproject/
 
 # ── PHP runtime ───────────────────────────────────────────────────────────────
 *.log
-logs/
+logs/*
+!logs/.gitkeep
 log/
 error_log
 php_errors.log

@@ -1,15 +1,16 @@
 <?php
+require_once __DIR__ . '/../admin/includes/config.php';
 //exit;
 ini_set('max_execution_time', 400000000);
 
 ini_set('mysql.connect_timeout', 400000000);
 ini_set('default_socket_timeout', 400000000);
-$con1 = mysqli_connect('10.34.240.214', 'webserveruser', 'K&dN&r4a8N@du0') or die(mysqli_error()); //cluster 2
+$con1 = mysqli_connect(DB_PROD_HOST, DB_USER, DB_PASS) or die(mysqli_error()); //cluster 2
 
 $con2 = $con1;
 //$con=mysql_connect("10.125.1.51","productionuser","Zb8#fNIsXnoP876") or die(mysql_error());//cluster2
 //$con=mysql_connect('10.34.240.3','webserveruser','K&dN&r4a8N@du0');
-$con6 = mysqli_connect('10.34.240.214', 'webserveruser', 'K&dN&r4a8N@du0');
+$con6 = mysqli_connect(DB_PROD_HOST, DB_USER, DB_PASS);
 
 // Batch-insert flush size (single source of truth). Lower = smaller INSERT statements
 // / lower per-statement memory. Used by both the all and adv insert paths.
@@ -21,7 +22,7 @@ date_default_timezone_set("Asia/Calcutta");
 // Daily log file: one file per run-date, e.g. logs/mainreport_all_2026-05-30.log.
 // Timezone is set first so the filename date matches the in-line timestamps.
 // Existing single-file logs are left untouched; rotation/cleanup is handled externally.
-$logFile = __DIR__ . '/../../logs/mainreport_all_' . date('Y-m-d') . '.log';
+$logFile = __DIR__ . '/../logs/mainreport_all_' . date('Y-m-d') . '.log';
 $logDebug = true;
 if (!is_dir(dirname($logFile))) {
 	@mkdir(dirname($logFile), 0775, true);

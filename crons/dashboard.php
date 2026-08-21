@@ -1,9 +1,10 @@
 <?php
+require_once __DIR__ . '/../admin/includes/config.php';
 
 date_default_timezone_set("Asia/Calcutta");
 //error_reporting(0);
-$con=new mysqli("10.34.240.3","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
-$con3=new mysqli("10.34.240.3","webserveruser","K&dN&r4a8N@du0") or die(mysqli_error());//cluster 2
+$con=new mysqli(DB_PROD_HOST2, DB_USER, DB_PASS) or die(mysqli_error());//cluster 2
+$con3=new mysqli(DB_PROD_HOST2, DB_USER, DB_PASS) or die(mysqli_error());//cluster 2
 
 
 //$conn=mysqli_connect('10.34.240.3','webserveruser','K&dN&r4a8N@du0');
