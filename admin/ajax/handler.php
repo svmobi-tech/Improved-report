@@ -3116,15 +3116,6 @@ function action_callback_report_load(mysqli $con): void
         ? "product='{$product}'
         AND operator NOT IN
         (
-            'ZA_Vodacom_BT',
-            'ZA_Vodacom_FG',
-            'ZA_Vodacom',
-            'ZA_Vodacom_WFH',
-            'Thailand_9305_dtac',
-            'Thailand_9305_Ais',
-            'Thailand_new_9005_Ais',
-            'Thailand_new_9005_Dtac',
-            'Thailand_new_9005_Truemove',
             'KSA_Weekly_Mobily',
             'KSA_Weekly_STC',
             'KSA_Weekly_zain',
@@ -3303,31 +3294,7 @@ function action_callback_report_operators(mysqli $con): void
     $res_q = mysqli_query($con,
         "SELECT operator, perform_callback, perform_centtocg
          FROM {$report}.mainreportquery
-         WHERE product = '{$product}'
-         AND operator NOT IN
-         (
-            'ZA_Vodacom_BT',
-            'ZA_Vodacom_FG',
-            'ZA_Vodacom',
-            'ZA_Vodacom_WFH',
-            'Thailand_9305_dtac',
-            'Thailand_9305_Ais',
-            'Thailand_new_9005_Ais',
-            'Thailand_new_9005_Dtac',
-            'Thailand_new_9005_Truemove',
-            'KSA_Weekly_Mobily',
-            'KSA_Weekly_STC',
-            'KSA_Weekly_zain',
-            'KSA_Daily_Mobily',
-            'KSA_Daily_STC',
-            'KSA_Daily_zain',
-            'KSA_GamePub_Weekly_Mobily',
-            'KSA_GamePub_Weekly_STC',
-            'KSA_Mobily_Weekly_Gamestation',
-            'KSA_Zain_Weekly_Gamestation',
-            'KSA_Stc_Weekly_Gamestation'
-         )
-         "
+         WHERE product = '{$product}'"
     );
 
     $ops = [];
@@ -3387,31 +3354,7 @@ function action_callback_report_advertisers(mysqli $con): void
     $res_q = mysqli_query($con,
         "SELECT operator, perform_callback, perform_centtocg
          FROM {$report}.mainreportquery
-         WHERE product = '{$product}'
-         AND operator NOT IN
-         (
-            'ZA_Vodacom_BT',
-            'ZA_Vodacom_FG',
-            'ZA_Vodacom',
-            'ZA_Vodacom_WFH',
-            'Thailand_9305_dtac',
-            'Thailand_9305_Ais',
-            'Thailand_new_9005_Ais',
-            'Thailand_new_9005_Dtac',
-            'Thailand_new_9005_Truemove',
-            'KSA_Weekly_Mobily',
-            'KSA_Weekly_STC',
-            'KSA_Weekly_zain',
-            'KSA_Daily_Mobily',
-            'KSA_Daily_STC',
-            'KSA_Daily_zain',
-            'KSA_GamePub_Weekly_Mobily',
-            'KSA_GamePub_Weekly_STC',
-            'KSA_Mobily_Weekly_Gamestation',
-            'KSA_Zain_Weekly_Gamestation',
-            'KSA_Stc_Weekly_Gamestation'
-         )
-         "
+         WHERE product = '{$product}'"
     );
 
     $advnames = [];
