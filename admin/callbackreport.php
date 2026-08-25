@@ -270,13 +270,14 @@ $(document).ready(function () {
                             orientation : 'landscape',
                             pageSize    : 'A4',
                             customize   : function (doc) {
-                                doc.pageMargins = [20, 35, 20, 20];
-                                doc.defaultStyle.fontSize        = 9;
+                                doc.pageSize = { width: 595.28, height: 841.89 };
+                                doc.pageMargins     = [10, 30, 10, 15];
+                                doc.defaultStyle.fontSize        = 8;
                                 doc.defaultStyle.alignment       = 'center';
-                                doc.styles.tableHeader.fontSize  = 9;
+                                doc.styles.tableHeader.fontSize  = 7;
                                 doc.styles.tableHeader.alignment = 'center';
-                                doc.styles.tableBodyOdd.fontSize  = 9;
-                                doc.styles.tableBodyEven.fontSize = 9;
+                                doc.styles.tableBodyOdd.fontSize  = 7;
+                                doc.styles.tableBodyEven.fontSize = 7;
                                 doc.content.forEach(function (node) {
                                     if (node.table) {
                                         var cols = node.table.body[0].length;

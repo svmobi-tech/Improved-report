@@ -3096,7 +3096,6 @@ function action_callback_report_load(mysqli $con): void
     $product    = mysqli_real_escape_string($con, trim($_POST['product']    ?? ''));
     $operator   = mysqli_real_escape_string($con, trim($_POST['operator']   ?? ''));
     $advertiser = trim($_POST['advertiser'] ?? 'all');
-    $hours      = '24';
     $start_raw  = trim($_POST['start_date'] ?? date('d-m-Y'));
     $end_raw    = trim($_POST['end_date']   ?? date('d-m-Y'));
 
@@ -3108,116 +3107,55 @@ function action_callback_report_load(mysqli $con): void
         return;
     }
 
-    $start_date = date('Y-m-d 00:00:00', strtotime($start_raw));
-    $end_date   = date('Y-m-d 23:59:59', strtotime($end_raw));
+    $start_date = date('Y-m-d', strtotime($start_raw));
+    $end_date   = date('Y-m-d', strtotime($end_raw));
 
-    // ── Fetch SP URL templates from mainreportquery ───────────────────────────
-    $op_filter = ($operator === 'all')
-        ? "product='{$product}'
-        AND operator NOT IN
-        (
-            'KSA_Weekly_Mobily',
-            'KSA_Weekly_STC',
-            'KSA_Weekly_zain',
-            'KSA_Daily_Mobily',
-            'KSA_Daily_STC',
-            'KSA_Daily_zain',
-            'KSA_GamePub_Weekly_Mobily',
-            'KSA_GamePub_Weekly_STC',
-            'KSA_Mobily_Weekly_Gamestation',
-            'KSA_Zain_Weekly_Gamestation',
-            'KSA_Stc_Weekly_Gamestation',
-            'Egypt_Mondia_Orange',
-            'Egypt_Mondia_all',
-            'Slovenia',
-            'Romania',
-            'Egypt_Mondia_api',
-            'Ghana_VF',
-            'Iraq_Korek_SVS',
-            'Nigeria_Airtel'
-        )
-        AND perform_callback != '' AND perform_callback IS NOT NULL"
-        : "product='{$product}' AND operator='{$operator}' LIMIT 1";
+    $where = "product = '{$product}' AND report_date BETWEEN '{$start_date}' AND '{$end_date}'";
 
-    $res_q = mysqli_query($con,
-        "SELECT operator, perform_callback, perform_centtocg
-         FROM {$report}.mainreportquery WHERE {$op_filter}"
-    );
-
-    // ── Run both SPs per operator, aggregate SUM(act) per advname ─────────────
-    $cb_data = [];   // [operator][advname] = total_cb
-    $pc_data = [];   // [operator][advname] = total_pc
-    $op_list = [];
-
-    while ($res_q && $qrow = mysqli_fetch_assoc($res_q)) {
-        $op_name = $qrow['operator'];
-        if (!in_array($op_name, $op_list)) $op_list[] = $op_name;
-        $cb_data[$op_name] = [];
-        $pc_data[$op_name] = [];
-
-        $url_cb = $qrow['perform_callback'] ?? '';
-        if ($url_cb) {
-            $q = str_replace(['[start_date]','[end_date]','[hours]'],
-                             [$start_date,   $end_date,   $hours], $url_cb);
-            $r = mysqli_query($con, $q);
-            if ($r) {
-                while ($row = mysqli_fetch_array($r)) {
-                    $a = $row['advname'];
-                    if ($advertiser !== 'all' && $a !== $advertiser) continue;
-                    $cb_data[$op_name][$a] = ($cb_data[$op_name][$a] ?? 0) + (int)$row['act'];
-                }
-                mysqli_free_result($r);
-            }
-            // Flush residual result sets left by CALL statement so next query works
-            while (mysqli_more_results($con) && mysqli_next_result($con)) {
-                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
-            }
-        }
-
-        $url_pc = $qrow['perform_centtocg'] ?? '';
-        if ($url_pc) {
-            $q = str_replace(['[start_date]','[end_date]','[hours]'],
-                             [$start_date,   $end_date,   $hours], $url_pc);
-            $r = mysqli_query($con, $q);
-            if ($r) {
-                while ($row = mysqli_fetch_array($r)) {
-                    $a = $row['advname'];
-                    if ($advertiser !== 'all' && $a !== $advertiser) continue;
-                    $pc_data[$op_name][$a] = ($pc_data[$op_name][$a] ?? 0) + (int)$row['act'];
-                }
-                mysqli_free_result($r);
-            }
-            // Flush residual result sets left by CALL statement
-            while (mysqli_more_results($con) && mysqli_next_result($con)) {
-                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
-            }
-        }
+    if ($operator === 'all') {
+        // Same exclusion list the live-SP version applied when operator=all
+        $excluded = [
+            'KSA_Weekly_Mobily', 'KSA_Weekly_STC', 'KSA_Weekly_zain',
+            'KSA_Daily_Mobily', 'KSA_Daily_STC', 'KSA_Daily_zain',
+            'KSA_GamePub_Weekly_Mobily', 'KSA_GamePub_Weekly_STC',
+            'KSA_Mobily_Weekly_Gamestation', 'KSA_Zain_Weekly_Gamestation', 'KSA_Stc_Weekly_Gamestation',
+            'Egypt_Mondia_Orange', 'Egypt_Mondia_all', 'Slovenia', 'Romania',
+            'Egypt_Mondia_api', 'Ghana_VF', 'Iraq_Korek_SVS', 'Nigeria_Airtel', 'Kuwait_Stc',
+        ];
+        $excludedList = "'" . implode("','", array_map(fn($o) => mysqli_real_escape_string($con, $o), $excluded)) . "'";
+        $where .= " AND operator NOT IN ({$excludedList})";
+    } else {
+        $where .= " AND operator = '{$operator}'";
     }
 
-    // ── Build flat rows: product | operator | advname | cbsum | pcsent | cost ──
-    $rows = [];
-    foreach ($op_list as $op_name) {
-        $op_esc   = mysqli_real_escape_string($con, $op_name);
-        $res_c    = mysqli_query($con,
-            "SELECT operatorcost_usd FROM {$report}.operatorcost
-             WHERE operator='{$op_esc}' AND product='{$product}' LIMIT 1"
-        );
-        $cost_usd = ($res_c && $rc = mysqli_fetch_assoc($res_c)) ? (float)$rc['operatorcost_usd'] : 0.0;
+    if ($advertiser !== 'all') {
+        $adv_esc = mysqli_real_escape_string($con, $advertiser);
+        $where .= " AND advertiser = '{$adv_esc}'";
+    }
 
-        $advnames = array_unique(array_merge(
-            array_keys($cb_data[$op_name] ?? []),
-            array_keys($pc_data[$op_name] ?? [])
-        ));
-        foreach ($advnames as $adv) {
-            $rows[] = [
-                'product'          => $product,
-                'operator'         => $op_name,
-                'advname'          => $adv,
-                'cbsum'            => $cb_data[$op_name][$adv] ?? 0,
-                'pcsent'           => $pc_data[$op_name][$adv] ?? 0,
-                'operatorcost_usd' => $cost_usd,
-            ];
-        }
+    $res = mysqli_query($con,
+        "SELECT operator, advertiser,
+                SUM(callback_act)      AS cbsum,
+                SUM(pinconfirm_act)    AS pcsent,
+                MAX(cost_per_callback) AS operatorcost_usd,
+                SUM(total_cost)        AS cost_row
+         FROM {$report}.callback_report_daily
+         WHERE {$where}
+         GROUP BY operator, advertiser
+         ORDER BY operator ASC, advertiser ASC"
+    );
+
+    $rows = [];
+    while ($res && $row = mysqli_fetch_assoc($res)) {
+        $rows[] = [
+            'product'          => $product,
+            'operator'         => $row['operator'],
+            'advname'          => $row['advertiser'],
+            'cbsum'            => (int)$row['cbsum'],
+            'pcsent'           => (int)$row['pcsent'],
+            'operatorcost_usd' => (float)$row['operatorcost_usd'],
+            'cost_row'         => (float)$row['cost_row'],
+        ];
     }
 
     if (empty($rows)) {
@@ -3248,19 +3186,18 @@ function action_callback_report_load(mysqli $con): void
     $html .= '</tr></thead><tbody>';
 
     foreach ($rows as $r) {
-        $cost_row    = round((float)$r['cbsum'] * (float)$r['operatorcost_usd'], 4);
-        $total_cb   += (int)$r['cbsum'];
-        $total_pc   += (int)$r['pcsent'];
-        $total_cost += $cost_row;
+        $total_cb   += $r['cbsum'];
+        $total_pc   += $r['pcsent'];
+        $total_cost += $r['cost_row'];
 
         $html .= '<tr>';
-        $html .= '<td>'                           . htmlspecialchars($r['product'])                    . '</td>';
-        $html .= '<td>'                           . htmlspecialchars($r['operator'])                   . '</td>';
-        $html .= '<td>'                           . htmlspecialchars($r['advname'])                    . '</td>';
-        $html .= '<td style="text-align:right">'  . number_format((int)$r['cbsum'])                   . '</td>';
-        $html .= '<td style="text-align:right">'  . number_format((int)$r['pcsent'])                  . '</td>';
-        $html .= '<td style="text-align:right">'  . number_format((float)$r['operatorcost_usd'], 6)   . '</td>';
-        $html .= '<td style="text-align:right">'  . number_format($cost_row, 4)                       . '</td>';
+        $html .= '<td>'                           . htmlspecialchars($r['product'])                  . '</td>';
+        $html .= '<td>'                           . htmlspecialchars($r['operator'])                 . '</td>';
+        $html .= '<td>'                           . htmlspecialchars($r['advname'])                  . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format($r['cbsum'])                       . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format($r['pcsent'])                      . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format($r['operatorcost_usd'], 6)          . '</td>';
+        $html .= '<td style="text-align:right">'  . number_format($r['cost_row'], 4)                  . '</td>';
         $html .= '</tr>';
     }
 
@@ -3299,48 +3236,18 @@ function action_callback_report_operators(mysqli $con): void
     $start_date = date('Y-m-d 00:00:00', strtotime($start_raw));
     $end_date   = date('Y-m-d 23:59:59', strtotime($end_raw));
 
-    $res_q = mysqli_query($con,
-        "SELECT operator, perform_callback, perform_centtocg
-         FROM {$report}.mainreportquery
+    $res = mysqli_query($con,
+        "SELECT DISTINCT operator
+         FROM {$report}.callback_report_daily
          WHERE product = '{$product}'
-         AND operator NOT IN
-         (
-            'Egypt_Mondia_Orange',
-            'Egypt_Mondia_all',
-            'Slovenia',
-            'Romania',
-            'Egypt_Mondia_api',
-            'Ghana_VF',
-            'Iraq_Korek_SVS',
-            'Nigeria_Airtel'
-         )
-         "
+           AND report_date BETWEEN '{$start_date}' AND '{$end_date}'
+           AND (callback_act > 0 OR pinconfirm_act > 0)
+         ORDER BY operator ASC"
     );
 
     $ops = [];
-    while ($res_q && $qrow = mysqli_fetch_assoc($res_q)) {
-        $has_data = false;
-
-        // Check both SPs — include operator if either Callback Sent OR Pin Confirmed has act > 0
-        foreach (['perform_callback', 'perform_centtocg'] as $col) {
-            if ($has_data) break;
-            $url = $qrow[$col] ?? '';
-            if (!$url) continue;
-            $q = str_replace(['[start_date]','[end_date]','[hours]'],
-                             [$start_date,   $end_date,   '24'], $url);
-            $r = mysqli_query($con, $q);
-            if ($r) {
-                while ($row = mysqli_fetch_array($r)) {
-                    if ((int)($row['act'] ?? 0) > 0) { $has_data = true; break; }
-                }
-                mysqli_free_result($r);
-            }
-            while (mysqli_more_results($con) && mysqli_next_result($con)) {
-                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
-            }
-        }
-
-        if ($has_data) $ops[] = $qrow['operator'];
+    while ($res && $row = mysqli_fetch_assoc($res)) {
+        $ops[] = $row['operator'];
     }
 
     sort($ops);
@@ -3371,49 +3278,22 @@ function action_callback_report_advertisers(mysqli $con): void
     $end_date   = date('Y-m-d 23:59:59', strtotime($end_raw));
 
     // Fetch both SP URL templates for this product — check BOTH SPs for advnames with act > 0
-    $res_q = mysqli_query($con,
-        "SELECT operator, perform_callback, perform_centtocg
-         FROM {$report}.mainreportquery
+    $res = mysqli_query($con,
+        "SELECT DISTINCT advertiser
+         FROM {$report}.callback_report_daily
          WHERE product = '{$product}'
-         AND operator NOT IN
-         (
-            'Egypt_Mondia_Orange',
-            'Egypt_Mondia_all',
-            'Slovenia',
-            'Romania',
-            'Egypt_Mondia_api',
-            'Ghana_VF',
-            'Iraq_Korek_SVS',
-            'Nigeria_Airtel'
-         )
-         "
+           AND report_date BETWEEN '{$start_date}' AND '{$end_date}'
+           AND (callback_act > 0 OR pinconfirm_act > 0)
+         ORDER BY advertiser ASC"
     );
 
-    $advnames = [];
-    while ($res_q && $qrow = mysqli_fetch_assoc($res_q)) {
-        foreach (['perform_callback', 'perform_centtocg'] as $col) {
-            $url = $qrow[$col] ?? '';
-            if (!$url) continue;
-            $q = str_replace(['[start_date]','[end_date]','[hours]'],
-                             [$start_date,   $end_date,   '24'], $url);
-            $r = mysqli_query($con, $q);
-            if ($r) {
-                while ($row = mysqli_fetch_array($r)) {
-                    $a = $row['advname'] ?? '';
-                    if ($a !== '' && (int)($row['act'] ?? 0) > 0 && !in_array($a, $advnames)) {
-                        $advnames[] = $a;
-                    }
-                }
-                mysqli_free_result($r);
-            }
-            while (mysqli_more_results($con) && mysqli_next_result($con)) {
-                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
-            }
-        }
+    $advs = [];
+    while ($res && $row = mysqli_fetch_assoc($res)) {
+        $advs[] = ['id' => $row['advertiser'], 'name' => $row['advertiser']];
     }
 
-    sort($advnames);
-    $advs = array_map(function($a) { return ['id' => $a, 'name' => $a]; }, $advnames);
+    // sort($advnames);
+    // $advs = array_map(function($a) { return ['id' => $a, 'name' => $a]; }, $advnames);
     echo json_encode($advs);
 }
 
@@ -3441,43 +3321,21 @@ function action_callback_report_operators_by_advertiser(mysqli $con): void
     $end_date   = date('Y-m-d 23:59:59', strtotime($end_raw));
 
     // Fetch both SP URL templates for every operator of this product
-    $res_q = mysqli_query($con,
-        "SELECT operator, perform_callback, perform_centtocg
-         FROM {$report}.mainreportquery
-         WHERE product = '{$product}'"
+    $res = mysqli_query($con,
+        "SELECT DISTINCT operator
+         FROM {$report}.callback_report_daily
+         WHERE product = '{$product}'
+           AND advertiser = '{$advertiser}'
+           AND report_date BETWEEN '{$start_date}' AND '{$end_date}'
+           AND (callback_act > 0 OR pinconfirm_act > 0)
+         ORDER BY operator ASC"
     );
 
     $ops = [];
-    while ($res_q && $qrow = mysqli_fetch_assoc($res_q)) {
-        $op_name  = $qrow['operator'];
-        $has_data = false;
-
-        // Check both SPs — include operator if the specific advertiser has act > 0 in either
-        foreach (['perform_callback', 'perform_centtocg'] as $col) {
-            if ($has_data) break;
-            $url = $qrow[$col] ?? '';
-            if (!$url) continue;
-            $q = str_replace(['[start_date]', '[end_date]', '[hours]'],
-                             [$start_date,    $end_date,    '24'], $url);
-            $r = mysqli_query($con, $q);
-            if ($r) {
-                while ($row = mysqli_fetch_array($r)) {
-                    if (($row['advname'] ?? '') === $advertiser && (int)($row['act'] ?? 0) > 0) {
-                        $has_data = true;
-                        break;
-                    }
-                }
-                mysqli_free_result($r);
-            }
-            while (mysqli_more_results($con) && mysqli_next_result($con)) {
-                if ($extra = mysqli_store_result($con)) mysqli_free_result($extra);
-            }
-        }
-
-        if ($has_data) $ops[] = $op_name;
+    while ($res && $row = mysqli_fetch_assoc($res)) {
+        $ops[] = $row['operator'];
     }
 
-    sort($ops);
     echo json_encode($ops);
 }
 
