@@ -35,9 +35,11 @@ $log_dir  = __DIR__ . '/logs';
 if (!is_dir($log_dir)) mkdir($log_dir, 0755, true);
 $log_file = $log_dir . '/cron_activation_' . date('Y-m-d') . '.log';
 
-function clog(string $msg): void {
-    global $log_file;
-    file_put_contents($log_file, '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL, FILE_APPEND);
+if (!function_exists('clog')) {
+    function clog(string $msg): void {
+        global $log_file;
+        file_put_contents($log_file, '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL, FILE_APPEND);
+    }
 }
 
 clog("========== cron_activation START — report date: {$date1} ==========");
