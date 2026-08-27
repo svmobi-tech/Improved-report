@@ -73,16 +73,16 @@ if ($k == 1) {
 	}
 
 	if ($activation1 == 0) {
-		// clog("Running cron_activation.php");
-		// include 'cron_activation.php';
+		clog("Running cron_activation.php");
+		include 'cron_activation.php';
 
-		// if ($activationcount != 1) {
-		// 	clog("cron_activation.php FAILED");
-		// 	$message .= "<br><h2 style='color:red'>cron_activation.php was not run successfully</h2>";
-		// } else {
-		// 	clog("cron_activation.php OK");
-		// 	$message .= "<br><h2 style='color:green'>cron_activation.php was  run successfully</h2>";
-		// }
+		if ($activationcount != 1) {
+			clog("cron_activation.php FAILED");
+			$message .= "<br><h2 style='color:red'>cron_activation.php was not run successfully</h2>";
+		} else {
+			clog("cron_activation.php OK");
+			$message .= "<br><h2 style='color:green'>cron_activation.php was  run successfully</h2>";
+		}
 	} else {
 		clog("Skipping cron_activation.php — already ran (ran={$activation1})");
 	}
