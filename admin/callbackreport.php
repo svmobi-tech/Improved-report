@@ -100,6 +100,38 @@ include("includes/check_session.php");
     </div>
 </div>
 
+<!-- Manual Callback Report (collapsed by default) -->
+<div class="hp-card" style="margin-top:16px;">
+    <div class="hp-card-header" id="manual-cbr-cron-header" style="cursor:pointer;user-select:none;">
+        <h4><i class="fa fa-play-circle"></i> Manual Callback Report</h4>
+        <button class="btn btn-xs btn-default" id="manual-cbr-cron-toggle" style="float:right;margin-top:-2px;" onclick="return false;">
+            <i class="fa fa-chevron-down"></i>
+        </button>
+    </div>
+    <div class="hp-card-body" id="manual-cbr-cron-body" style="display:none;">
+        <div class="row" style="align-items:flex-end;">
+            <div class="col-md-3 col-sm-5">
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="hp-filter-label">Select Date</label>
+                    <input type="text" id="manual-cbr-cron-date" class="form-control birthday"
+                           value="<?php echo date('d-m-Y', strtotime('-1 days')); ?>">
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4" style="padding-top:4px;">
+                <button id="manual-cbr-cron-btn" class="btn btn-warning btn-block" style="font-weight:600;">
+                    <i class="fa fa-bolt"></i> Run Cron for Date
+                </button>
+            </div>
+            <div class="col-md-5 col-sm-12" style="padding-top:4px;">
+                <p style="margin:0;font-size:12.5px;color:#718096;line-height:1.5;">
+                    <i class="fa fa-info-circle" style="color:#667eea;"></i>
+                    Opens the cron in a new tab — existing callback data for that date will be cleared and re-inserted.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
 </div><!-- /.hp-content -->
 </div><!-- /.hp-main -->
 
@@ -107,6 +139,47 @@ include("includes/check_session.php");
 
 <script>
 $(document).ready(function () {
+
+    // Toggle Manual Callback Report card
+    $('#manual-cbr-cron-header').on('click', function () {
+        var $body = $('#manual-cbr-cron-body');
+        var $icon = $('#manual-cbr-cron-toggle i');
+        $body.slideToggle(250, function () {
+            if ($body.is(':visible')) {
+                $icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+            } else {
+                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+            }
+        });
+    });
+
+    // Manual cron date picker — future dates disabled
+    $('#manual-cbr-cron-date').daterangepicker({
+        singleDatePicker : true,
+        autoApply        : true,
+        maxDate          : moment(),
+        locale           : { format: 'DD-MM-YYYY' }
+    });
+
+    // On click: convert date to YYYY-MM-DD and open cron URL in new tab
+    $('#manual-cbr-cron-btn').on('click', function () {
+        var raw = $('#manual-cbr-cron-date').val();  // DD-MM-YYYY
+        if (!raw) { alert('Please select a date.'); return; }
+
+        var parts = raw.split('-');
+        if (parts.length !== 3) { alert('Invalid date.'); return; }
+        var ymd = parts[2] + '-' + parts[1] + '-' + parts[0];
+
+        var today = new Date(); today.setHours(0,0,0,0);
+        var picked = new Date(ymd);
+        if (picked > today) {
+            alert('Future date not allowed.\nPlease select today or a past date.');
+            return;
+        }
+
+        var url = '../crons/callback_report_cron_daily.php?date=' + ymd;
+        window.open(url, '_blank');
+    });
 
     // ── Date pickers ──────────────────────────────────────────────────────────
     $('#cbr-start, #cbr-end').daterangepicker({

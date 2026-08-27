@@ -20,7 +20,12 @@ function log_line($level, $msg)
 }
 
 $report      = 'gamebardb_vodafone_qatar_report';
-$report_date = date('Y-m-d', strtotime('-1 days'));
+$dateArg = $_GET['date'] ?? ($argv[1] ?? null);
+if ($dateArg && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateArg)) {
+    $report_date = $dateArg;
+} else {
+    $report_date = date('Y-m-d', strtotime('-1 days'));
+}
 $start_date  = $report_date . ' 00:00:00';
 $end_date    = $report_date . ' 23:59:59';
 
