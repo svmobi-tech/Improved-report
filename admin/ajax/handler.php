@@ -3328,7 +3328,9 @@ function action_callback_report_load(mysqli $con): void
     }
 
     $rows = array_values($merged);
-    usort($rows, fn($a, $b) => $a['operator'] <=> $b['operator'] ?: $a['advname'] <=> $b['advname']);
+    usort($rows, function ($a, $b) {
+        return $a['operator'] <=> $b['operator'] ?: $a['advname'] <=> $b['advname'];
+    });
 
     if (empty($rows)) {
         echo '<div class="hp-card" style="margin-top:16px"><div class="hp-card-body" style="padding:60px;text-align:center">
@@ -3638,7 +3640,9 @@ function action_callback_report_advertisers(mysqli $con): void
         }
     }
 
-    $advs = array_map(fn($a) => ['id' => $a, 'name' => $a], $advnames);
+    $advs = array_map(function ($a) {
+        return ['id' => $a, 'name' => $a];
+    }, $advnames);
     echo json_encode($advs);
 }
 
