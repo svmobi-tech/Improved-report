@@ -3119,7 +3119,9 @@ function action_callback_report_load(mysqli $con): void
         'Egypt_Mondia_Orange', 'Egypt_Mondia_all', 'Slovenia', 'Romania',
         'Egypt_Mondia_api', 'Ghana_VF', 'Iraq_Korek_SVS', 'Nigeria_Airtel', 'Kuwait_Stc',
     ];
-    $excludedList = "'" . implode("','", array_map(fn($o) => mysqli_real_escape_string($con, $o), $excludedOperators)) . "'";
+    $excludedList = "'" . implode("','", array_map(function ($o) use ($con) {
+        return mysqli_real_escape_string($con, $o);
+    }, $excludedOperators)) . "'";
 
     // key = "operator|advname" => ['operator'=>.., 'advname'=>.., 'cbsum'=>.., 'pcsent'=>.., 'cost'=>.., 'rate'=>..]
     $merged = [];
