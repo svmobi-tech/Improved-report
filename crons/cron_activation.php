@@ -186,6 +186,8 @@ for ($i = 1; $i <= 24; $i++) {
     $contest_qatar      = call_proc($con1, "call contestdb_qaoo.get_activation('{$start_date}','{$end_date}',{$i})", $activation);
     $contest_bh         = call_proc($con1, "call contestdb_bh.get_activation('{$start_date}','{$end_date}',{$i})");
 
+    $contest_ghmtn         = call_proc($con1, "call contestdb_ghmtn.get_activation('{$start_date}','{$end_date}',{$i})");
+
     // ── Log hour summary ──────────────────────────────────────────────────────
     clog("Hour {$i}/24 | activation={$activation} | iraq={$gamebar_iraq} bangladesh={$gamebar_bangladesh} indonesia={$gamebar_indonesia} nigeria={$gamebar_Nigeria}");
     if ($is_web) { echo "<p class='done'>&#10003; Hour {$i}/24 done &mdash; activation={$activation}</p>"; ob_flush(); flush(); }
@@ -208,7 +210,7 @@ for ($i = 1; $i <= 24; $i++) {
          `gamebar_turkey`,`gamebar_switzerland`,`gamebar_iraq`,`gamebar_Mozambique`,`gamebar_kenya`,
          `gamebar_jordan`,`gamebar_bangladesh`,`gamebar_ghana`,`gamebar_Nigeria`,`gamebar_gabon`,
          `gamebar_Palestine`,`11Players_nigeria`,`11Players_bd`,`11Players_kenya`,`contest_qatar`,
-         `gamebar_ethiopia`,`11players_ethiopia`,`11players_ghana`,`11Players_KSA`,`contest_bh`,`gamebar_lk`)
+         `gamebar_ethiopia`,`11players_ethiopia`,`11players_ghana`,`11Players_KSA`,`contest_bh`,`gamebar_lk`, `contest_ghmtn`)
         VALUES
         ('{$date1}','{$i}','{$gamebar_france}','{$sagact}','{$gamebar_myanmar}','{$gamebar_paydashgr}',
          '{$glambarsouthafrica}','{$glambar_paydashgr}','{$gamebar_kuwait}','{$gamebar_bahrain}','{$gamebar_indonesia}',
@@ -218,7 +220,7 @@ for ($i = 1; $i <= 24; $i++) {
          '{$gamebar_turkey}','{$gamebar_switzerland}','{$gamebar_iraq}','{$gamebar_Mozambique}','{$gamebar_kenya}',
          '{$gamebar_jordan}','{$gamebar_bangladesh}','{$gamebar_ghana}','{$gamebar_Nigeria}','{$gamebar_gabon}',
          '{$gamebar_Palestine}','{$players_ng}','{$players_bd}','{$Players_kenya}','{$contest_qatar}',
-         '{$gamebar_et}','{$players_et}','{$players_ghana}','{$players_ksa}','{$contest_bh}','{$gamebar_lk}')";
+         '{$gamebar_et}','{$players_et}','{$players_ghana}','{$players_ksa}','{$contest_bh}','{$gamebar_lk}','{$contest_ghmtn}')";
 
     if (!mysqli_query($con1, $sql55)) {
         clog("INSERT ERROR hour {$i}: " . $con1->error);
