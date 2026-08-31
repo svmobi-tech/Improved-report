@@ -93,6 +93,7 @@ $columns = [
     'Contest' => [
         'Bahrain'     => 'contest_bh',
         'Qatar'       => 'contest_qatar',
+        'GhanaMTN'    => 'contest_ghmtn',
     ],
 ];
 
