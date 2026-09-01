@@ -36,7 +36,9 @@ $excludedOperators = [
     'Egypt_Mondia_Orange', 'Egypt_Mondia_all', 'Slovenia', 'Romania',
     'Egypt_Mondia_api', 'Ghana_VF', 'Iraq_Korek_SVS', 'Nigeria_Airtel', 'Kuwait_Stc'
 ];
-$excludedList = "'" . implode("','", array_map(fn($o) => mysqli_real_escape_string($con1, $o), $excludedOperators)) . "'";
+$excludedList = "'" . implode("','", array_map(function($o) use ($con1) {
+    return mysqli_real_escape_string($con1, $o);
+}, $excludedOperators)) . "'";
 
 // mainreportquery is READ-ONLY here — nothing is ever written back to it.
 // Progress is tracked purely by checking whether callback_report_daily already
